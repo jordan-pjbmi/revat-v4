@@ -23,8 +23,8 @@ class GetConversionsRequest extends Request
     protected function defaultQuery(): array
     {
         return [
-            'from' => $this->from->toIso8601String(),
-            'to' => $this->to->toIso8601String(),
+            'from' => $this->from->utc()->startOfHour()->format('Y-m-d\TH:i:s\Z'),
+            'to' => $this->to->utc()->startOfHour()->format('Y-m-d\TH:i:s\Z'),
             'tz' => 'UTC',
         ];
     }

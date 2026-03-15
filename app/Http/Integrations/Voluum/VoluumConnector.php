@@ -31,16 +31,9 @@ class VoluumConnector extends BasePlatformConnector
 
     protected function defaultHeaders(): array
     {
-        $headers = [
-            'Accept' => 'application/json',
+        return [
             'Content-Type' => 'application/json',
         ];
-
-        if ($this->sessionToken) {
-            $headers['cwauth-token'] = $this->sessionToken;
-        }
-
-        return $headers;
     }
 
     /**
@@ -71,6 +64,8 @@ class VoluumConnector extends BasePlatformConnector
         if (! $this->sessionToken) {
             throw new \RuntimeException('Voluum authentication response did not contain a token.');
         }
+
+        $this->headers()->add('cwauth-token', $this->sessionToken);
     }
 
     public function testConnection(): ConnectionTest
