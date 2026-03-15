@@ -267,6 +267,7 @@ class ExpertSenderConnector extends BasePlatformConnector
                 ['value' => 'FromName', 'label' => 'From Name'],
                 ['value' => 'FromEmail', 'label' => 'From Email'],
                 ['value' => 'external_id', 'label' => 'Message ID'],
+                ['value' => '__url_param__', 'label' => 'URL Query Parameter'],
             ],
         ];
     }

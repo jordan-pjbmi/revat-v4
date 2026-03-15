@@ -5,6 +5,7 @@ use App\Models\AttributionConnector;
 use App\Models\Integration;
 use App\Services\Integrations\ConnectorRegistry;
 use App\Services\WorkspaceContext;
+use Illuminate\Support\Facades\DB;
 use Livewire\Volt\Component;
 
 new class extends Component
@@ -34,6 +35,9 @@ new class extends Component
 
     public string $effortCodeSource = 'campaign';
 
+    // URL parameter autocomplete suggestions
+    public array $urlParamSuggestions = [];
+
     // Cascading dropdown options
     public array $campaignDataTypeOptions = [];
 
@@ -51,6 +55,7 @@ new class extends Component
             'effortCodeField', 'effortCodeSource',
             'campaignDataTypeOptions', 'conversionDataTypeOptions',
             'campaignFieldOptions', 'conversionFieldOptions',
+            'urlParamSuggestions',
         ]);
         $this->type = 'mapped';
         $this->isActive = true;
@@ -104,6 +109,9 @@ new class extends Component
         if ($this->conversionIntegrationId && $this->conversionDataType) {
             $this->loadFieldOptions('conversion', (int) $this->conversionIntegrationId, $this->conversionDataType);
         }
+        if ($this->campaignDataType === 'campaign_email_clicks') {
+            $this->suggestUrlParams();
+        }
 
         $this->showModal = true;
     }
@@ -140,9 +148,14 @@ new class extends Component
     public function updatedCampaignDataType($value): void
     {
         $this->campaignFieldOptions = [];
+        $this->urlParamSuggestions = [];
 
         if ($value && $this->campaignIntegrationId) {
             $this->loadFieldOptions('campaign', (int) $this->campaignIntegrationId, $value);
+        }
+
+        if ($value === 'campaign_email_clicks') {
+            $this->suggestUrlParams();
         }
     }
 
@@ -192,6 +205,28 @@ new class extends Component
         } else {
             $this->conversionFieldOptions = $options;
         }
+    }
+
+    public function suggestUrlParams(): void
+    {
+        $workspace = app(WorkspaceContext::class)->getWorkspace();
+        if (! $workspace) {
+            $this->urlParamSuggestions = [];
+
+            return;
+        }
+
+        $this->urlParamSuggestions = DB::table('campaign_email_click_raw_data')
+            ->where('workspace_id', $workspace->id)
+            ->whereNotNull('url_params')
+            ->select(DB::raw("DISTINCT JSON_KEYS(url_params) as param_keys"))
+            ->limit(500)
+            ->get()
+            ->flatMap(fn ($row) => json_decode($row->param_keys, true) ?? [])
+            ->unique()
+            ->sort()
+            ->values()
+            ->toArray();
     }
 
     public function addMappingRow(): void
@@ -497,13 +532,67 @@ new class extends Component
                             </div>
 
                             @foreach ($fieldMappings as $index => $mapping)
-                                <div class="flex items-center gap-2">
+                                <div
+                                    class="flex items-center gap-2"
+                                    x-data="{
+                                        isUrlParam: @js(str_starts_with($mapping['campaign'] ?? '', 'url_param:')),
+                                        urlParamName: @js(str_starts_with($mapping['campaign'] ?? '', 'url_param:') ? substr($mapping['campaign'], strlen('url_param:')) : ''),
+                                        selectValue: @js(str_starts_with($mapping['campaign'] ?? '', 'url_param:') ? '__url_param__' : ($mapping['campaign'] ?? '')),
+                                        onSelectChange() {
+                                            if (this.selectValue === '__url_param__') {
+                                                this.isUrlParam = true;
+                                                this.urlParamName = '';
+                                                $wire.set('fieldMappings.{{ $index }}.campaign', '');
+                                            } else {
+                                                this.isUrlParam = false;
+                                                $wire.set('fieldMappings.{{ $index }}.campaign', this.selectValue);
+                                            }
+                                        },
+                                        onParamInput() {
+                                            $wire.set('fieldMappings.{{ $index }}.campaign', this.urlParamName ? 'url_param:' + this.urlParamName : '');
+                                        },
+                                        clearUrlParam() {
+                                            this.isUrlParam = false;
+                                            this.urlParamName = '';
+                                            this.selectValue = '';
+                                            $wire.set('fieldMappings.{{ $index }}.campaign', '');
+                                        },
+                                    }"
+                                >
                                     @if (! empty($campaignFieldOptions))
-                                        <flux:select wire:model="fieldMappings.{{ $index }}.campaign" placeholder="Campaign field" class="flex-1">
-                                            @foreach ($campaignFieldOptions as $option)
-                                                <flux:select.option value="{{ $option['value'] }}">{{ $option['label'] }}</flux:select.option>
-                                            @endforeach
-                                        </flux:select>
+                                        <div class="flex-1">
+                                            <div x-show="!isUrlParam">
+                                                <select
+                                                    x-model="selectValue"
+                                                    x-on:change="onSelectChange()"
+                                                    class="w-full rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm px-2 py-1.5 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                >
+                                                    <option value="">Campaign field</option>
+                                                    @foreach ($campaignFieldOptions as $option)
+                                                        <option value="{{ $option['value'] }}">{{ $option['label'] }}</option>
+                                                    @endforeach
+                                                </select>
+                                            </div>
+                                            <div x-show="isUrlParam" x-cloak class="flex gap-1 items-center">
+                                                <span class="text-[10px] text-slate-500 dark:text-slate-400 shrink-0 font-medium">URL Param:</span>
+                                                <input
+                                                    type="text"
+                                                    x-model="urlParamName"
+                                                    x-on:input="onParamInput()"
+                                                    list="url-param-suggestions-{{ $index }}"
+                                                    placeholder="e.g. utm_campaign"
+                                                    class="flex-1 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm px-2 py-1.5 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                />
+                                                <datalist id="url-param-suggestions-{{ $index }}">
+                                                    @foreach ($urlParamSuggestions as $param)
+                                                        <option value="{{ $param }}">
+                                                    @endforeach
+                                                </datalist>
+                                                <button type="button" x-on:click="clearUrlParam()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 shrink-0" title="Switch back to field select">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                                </button>
+                                            </div>
+                                        </div>
                                     @else
                                         <flux:input wire:model="fieldMappings.{{ $index }}.campaign" placeholder="Campaign field" class="flex-1" />
                                     @endif

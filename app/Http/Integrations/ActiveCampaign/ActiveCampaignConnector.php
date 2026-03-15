@@ -251,6 +251,7 @@ class ActiveCampaignConnector extends BasePlatformConnector
                 ['value' => 'fromemail', 'label' => 'From Email'],
                 ['value' => 'external_id', 'label' => 'Campaign ID'],
                 ['value' => 'name', 'label' => 'Campaign Name'],
+                ['value' => '__url_param__', 'label' => 'URL Query Parameter'],
             ],
         ];
     }

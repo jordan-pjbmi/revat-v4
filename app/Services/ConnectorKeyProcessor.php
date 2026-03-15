@@ -70,6 +70,25 @@ class ConnectorKeyProcessor
      */
     protected function validateFieldName(string $field, Integration $integration, ?string $dataType): void
     {
+        // url_param:<name> fields are valid only for campaign_email_clicks
+        if (str_starts_with($field, 'url_param:')) {
+            $paramName = substr($field, strlen('url_param:'));
+
+            if (! preg_match('/^[a-zA-Z0-9_\-\.]+$/', $paramName)) {
+                throw new \InvalidArgumentException(
+                    "URL parameter name '{$paramName}' contains invalid characters."
+                );
+            }
+
+            if ($dataType !== 'campaign_email_clicks') {
+                throw new \InvalidArgumentException(
+                    "URL parameter fields are only supported for campaign_email_clicks data type."
+                );
+            }
+
+            return;
+        }
+
         $connector = $this->registry->resolve($integration);
         $matchableFields = $connector->getMatchableFields($integration);
 
@@ -118,6 +137,8 @@ class ConnectorKeyProcessor
      */
     protected function processCampaignClickRecords(AttributionConnector $connector, array $fields): void
     {
+        $hasUrlParamFields = collect($fields)->contains(fn ($f) => str_starts_with($f, 'url_param:'));
+
         $selects = ['cec.id as record_id'];
         $query = DB::table('campaign_email_clicks as cec')
             ->join('campaign_emails as ce', 'ce.id', '=', 'cec.campaign_email_id')
@@ -125,9 +146,19 @@ class ConnectorKeyProcessor
             ->where('cec.workspace_id', $connector->workspace_id)
             ->whereNull('cec.deleted_at');
 
+        if ($hasUrlParamFields) {
+            $query->leftJoin('campaign_email_click_raw_data as cecrd', 'cecrd.id', '=', 'cec.raw_data_id');
+        }
+
         foreach ($fields as $i => $field) {
-            $jsonPath = '$.' . $field;
-            $selects[] = DB::raw("JSON_UNQUOTE(JSON_EXTRACT(cerd.raw_data, '{$jsonPath}')) as field_value_{$i}");
+            if (str_starts_with($field, 'url_param:')) {
+                $paramName = substr($field, strlen('url_param:'));
+                $jsonPath = '$.' . $paramName;
+                $selects[] = DB::raw("JSON_UNQUOTE(JSON_EXTRACT(cecrd.url_params, '{$jsonPath}')) as field_value_{$i}");
+            } else {
+                $jsonPath = '$.' . $field;
+                $selects[] = DB::raw("JSON_UNQUOTE(JSON_EXTRACT(cerd.raw_data, '{$jsonPath}')) as field_value_{$i}");
+            }
         }
 
         $query->select($selects)

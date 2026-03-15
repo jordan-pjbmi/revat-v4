@@ -246,6 +246,7 @@ class MaropostConnector extends BasePlatformConnector
                 ['value' => 'from_name', 'label' => 'From Name'],
                 ['value' => 'from_email', 'label' => 'From Email'],
                 ['value' => 'external_id', 'label' => 'Campaign ID'],
+                ['value' => '__url_param__', 'label' => 'URL Query Parameter'],
             ],
         ];
     }
