@@ -2,6 +2,7 @@
 
 namespace App\Jobs\Extraction;
 
+use App\Jobs\TransformExtractionBatches;
 use App\Models\ExtractionBatch;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -55,6 +56,11 @@ class UpsertRawData implements ShouldQueue
             $batch->records_count = $recordCount;
             $batch->save();
             $integration->markDataTypeStatus($batch->data_type, 'loaded');
+
+            // Dispatch transformation — the job queries all extracted batches
+            // with correct ordering (campaign_emails before clicks), so duplicate
+            // dispatches from parallel upserts are safe.
+            TransformExtractionBatches::dispatch();
         } catch (\Throwable $e) {
             $batch->markFailed("Upsert failed: {$e->getMessage()}");
 
