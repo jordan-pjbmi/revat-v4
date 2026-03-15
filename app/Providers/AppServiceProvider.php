@@ -18,6 +18,7 @@ use App\Models\Plan;
 use App\Models\Program;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Observers\WorkspaceObserver;
 use App\Services\Integrations\ConnectorRegistry;
 use App\Services\PlanEnforcement\PlanEnforcementService;
 use App\Services\Transformation\CampaignEmailClickTransformer;
@@ -59,6 +60,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Workspace::observe(WorkspaceObserver::class);
+
         Relation::morphMap([
             'organization' => Organization::class,
             'workspace' => Workspace::class,

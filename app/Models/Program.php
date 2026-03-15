@@ -20,6 +20,7 @@ class Program extends Model
         'code',
         'description',
         'status',
+        'is_default',
         'start_date',
         'end_date',
     ];
@@ -27,6 +28,7 @@ class Program extends Model
     protected function casts(): array
     {
         return [
+            'is_default' => 'boolean',
             'start_date' => 'date',
             'end_date' => 'date',
         ];
@@ -65,9 +67,20 @@ class Program extends Model
 
     // ── Boot ─────────────────────────────────────────────────────────
 
+    public function scopeDefault(Builder $query): Builder
+    {
+        return $query->where('is_default', true);
+    }
+
+    // ── Boot ─────────────────────────────────────────────────────────
+
     protected static function booted(): void
     {
         static::deleting(function (Program $program) {
+            if ($program->is_default) {
+                return false;
+            }
+
             if ($program->isForceDeleting()) {
                 return;
             }

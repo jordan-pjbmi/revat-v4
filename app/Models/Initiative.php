@@ -20,12 +20,14 @@ class Initiative extends Model
         'code',
         'description',
         'status',
+        'is_default',
         'budget',
     ];
 
     protected function casts(): array
     {
         return [
+            'is_default' => 'boolean',
             'budget' => 'decimal:2',
         ];
     }
@@ -63,9 +65,20 @@ class Initiative extends Model
 
     // ── Boot ─────────────────────────────────────────────────────────
 
+    public function scopeDefault(Builder $query): Builder
+    {
+        return $query->where('is_default', true);
+    }
+
+    // ── Boot ─────────────────────────────────────────────────────────
+
     protected static function booted(): void
     {
         static::deleting(function (Initiative $initiative) {
+            if ($initiative->is_default) {
+                return false;
+            }
+
             if ($initiative->isForceDeleting()) {
                 return;
             }

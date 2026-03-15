@@ -14,6 +14,7 @@ class AttributionConnector extends Model
     protected $fillable = [
         'workspace_id',
         'name',
+        'type',
         'campaign_integration_id',
         'campaign_data_type',
         'conversion_integration_id',
@@ -38,11 +39,24 @@ class AttributionConnector extends Model
         $mappings = is_string($value) ? json_decode($value, true) : $value;
 
         if (is_array($mappings)) {
-            foreach ($mappings as $mapping) {
-                if (! isset($mapping['campaign'], $mapping['conversion'])) {
+            $type = $this->attributes['type'] ?? $this->type ?? 'mapped';
+
+            if ($type === 'simple') {
+                if (! isset($mappings['effort_code_field'])) {
                     throw new \InvalidArgumentException(
-                        'field_mappings must follow {"campaign": "field_name", "conversion": "field_name"} format.'
+                        'Simple connectors require an "effort_code_field" key in field_mappings.'
                     );
+                }
+            } else {
+                foreach ($mappings as $key => $mapping) {
+                    if ($key === 'effort_code_field' || $key === 'effort_code_source') {
+                        continue;
+                    }
+                    if (! isset($mapping['campaign'], $mapping['conversion'])) {
+                        throw new \InvalidArgumentException(
+                            'field_mappings must follow {"campaign": "field_name", "conversion": "field_name"} format.'
+                        );
+                    }
                 }
             }
         }
@@ -77,5 +91,10 @@ class AttributionConnector extends Model
     public function scopeActive($query): void
     {
         $query->where('is_active', true);
+    }
+
+    public function scopeForWorkspace($query, int $workspaceId)
+    {
+        return $query->where('workspace_id', $workspaceId);
     }
 }

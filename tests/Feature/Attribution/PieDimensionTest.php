@@ -177,7 +177,8 @@ it('active scope filters by status', function () {
         'status' => 'archived',
     ]);
 
-    expect(Program::active()->count())->toBe(1);
+    // +1 for the default program auto-created by WorkspaceObserver
+    expect(Program::active()->count())->toBe(2);
 });
 
 it('forWorkspace scope filters by workspace', function () {
@@ -195,8 +196,9 @@ it('forWorkspace scope filters by workspace', function () {
         'code' => 'WS2-001',
     ]);
 
-    expect(Program::forWorkspace($this->workspace)->count())->toBe(1);
-    expect(Program::forWorkspace($otherWorkspace)->count())->toBe(1);
+    // +1 each for default programs auto-created by WorkspaceObserver
+    expect(Program::forWorkspace($this->workspace)->count())->toBe(2);
+    expect(Program::forWorkspace($otherWorkspace)->count())->toBe(2);
 });
 
 it('forChannel scope filters efforts by channel type', function () {
