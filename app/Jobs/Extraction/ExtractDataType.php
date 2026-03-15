@@ -10,7 +10,6 @@ use Carbon\Carbon;
 use Illuminate\Bus\Batchable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
-use Illuminate\Queue\Middleware\ThrottlesExceptionsWithRedis;
 use Illuminate\Support\Facades\Log;
 
 class ExtractDataType implements ShouldQueue
@@ -33,14 +32,6 @@ class ExtractDataType implements ShouldQueue
         public ?Carbon $since = null,
     ) {
         $this->queue = config('queues.extraction');
-    }
-
-    public function middleware(): array
-    {
-        return [
-            (new ThrottlesExceptionsWithRedis(5, 5 * 60))
-                ->by("extraction:{$this->integration->id}"),
-        ];
     }
 
     public function handle(ConnectorRegistry $registry): void

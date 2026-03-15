@@ -15,6 +15,10 @@ use Saloon\Exceptions\Request\FatalRequestException;
 use Saloon\Exceptions\Request\RequestException;
 use Saloon\Http\Connector;
 use Saloon\Http\Request;
+use Saloon\RateLimitPlugin\Contracts\RateLimitStore;
+use Saloon\RateLimitPlugin\Limit;
+use Saloon\RateLimitPlugin\Stores\LaravelCacheStore;
+use Saloon\RateLimitPlugin\Traits\HasRateLimits;
 use Saloon\Traits\Plugins\AcceptsJson;
 use Saloon\Traits\Plugins\AlwaysThrowOnErrors;
 
@@ -22,6 +26,7 @@ abstract class BasePlatformConnector extends Connector implements PlatformConnec
 {
     use AcceptsJson;
     use AlwaysThrowOnErrors;
+    use HasRateLimits;
 
     // ── Retry Configuration ──────────────────────────────────────────
 
@@ -117,6 +122,29 @@ abstract class BasePlatformConnector extends Connector implements PlatformConnec
         return [
             'connect_timeout' => config('integrations.http.connect_timeout', 10),
             'timeout' => config('integrations.http.timeout', 30),
+        ];
+    }
+
+    // ── Rate Limiting ─────────────────────────────────────────────────
+
+    protected function resolveRateLimitStore(): RateLimitStore
+    {
+        return new LaravelCacheStore(cache()->store('redis'));
+    }
+
+    protected function resolveLimits(): array
+    {
+        $config = config("integrations.rate_limits.{$this->platform()}");
+
+        if (! $config) {
+            return [];
+        }
+
+        return [
+            Limit::allow($config['requests'])
+                ->everySeconds($config['per_seconds'])
+                ->name("{$this->platform()}:{$this->integration->id}")
+                ->sleep(),
         ];
     }
 

@@ -45,6 +45,24 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Per-Platform Rate Limits
+    |--------------------------------------------------------------------------
+    |
+    | Proactive request pacing per platform. Limits are scoped per integration
+    | (per API key) via Redis. When the limit is hit, the connector sleeps
+    | until the window resets rather than firing and getting 429'd.
+    |
+    */
+
+    'rate_limits' => [
+        'activecampaign' => ['requests' => 5, 'per_seconds' => 1],
+        'expertsender' => ['requests' => 10, 'per_seconds' => 1],
+        'maropost' => ['requests' => 1, 'per_seconds' => 1],
+        'voluum' => ['requests' => 3, 'per_seconds' => 1],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | HTTP Client Defaults
     |--------------------------------------------------------------------------
     */
