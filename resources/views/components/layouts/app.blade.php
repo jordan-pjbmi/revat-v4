@@ -32,9 +32,24 @@
 
         @auth
         <flux:sidebar.profile>
-            <flux:sidebar.item icon="user-circle" href="#">
-                {{ auth()->user()->name }}
-            </flux:sidebar.item>
+            <flux:dropdown position="top" align="start" data-testid="sidebar-user-menu">
+                <flux:button variant="ghost" class="w-full justify-start">
+                    <div class="flex items-center gap-2">
+                        <x-user-avatar :user="auth()->user()" size="size-6" />
+                        <span class="text-sm font-medium truncate">{{ auth()->user()->name }}</span>
+                    </div>
+                </flux:button>
+
+                <flux:menu>
+                    <flux:menu.item icon="user-circle" href="{{ route('settings.profile') }}">Profile</flux:menu.item>
+                    <flux:menu.item icon="cog-6-tooth" href="{{ route('settings.profile') }}">Settings</flux:menu.item>
+                    <flux:separator />
+                    <form method="POST" action="{{ route('logout') }}">
+                        @csrf
+                        <flux:menu.item icon="arrow-right-start-on-rectangle" type="submit">Sign out</flux:menu.item>
+                    </form>
+                </flux:menu>
+            </flux:dropdown>
         </flux:sidebar.profile>
         @endauth
     </flux:sidebar>
@@ -48,7 +63,7 @@
     </flux:header>
 
     {{-- Desktop Header --}}
-    <flux:header class="hidden lg:flex items-center border-b border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-6 h-14" container>
+    <flux:header class="hidden lg:flex items-center border-b border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-6 h-14">
         @auth
             @php
                 $user = auth()->user();
@@ -106,24 +121,31 @@
 
         <flux:spacer />
 
-        <div class="flex items-center gap-2" data-testid="header-actions">
-            <div x-data class="flex items-center">
-                <flux:button variant="ghost" icon="sun" class="dark:hidden" data-testid="appearance-toggle" x-on:click="$flux.appearance = 'dark'" />
-                <flux:button variant="ghost" icon="moon" class="hidden dark:flex" data-testid="appearance-toggle-dark" x-on:click="$flux.appearance = 'light'" />
-            </div>
+        <div class="flex items-center gap-1" data-testid="header-actions">
             <flux:button variant="ghost" icon="bell" data-testid="notifications" />
-            @auth
-                <flux:dropdown data-testid="user-menu">
-                    <flux:button variant="ghost" icon="user-circle" />
+
+            {{-- Appearance Toggle (Light / Dark / System) --}}
+            <div x-data="{
+                mode: localStorage.getItem('flux.appearance') || 'system',
+                set(value) {
+                    this.mode = value;
+                    $flux.appearance = value;
+                }
+            }" class="flex items-center" data-testid="appearance-toggle">
+                <flux:dropdown>
+                    <flux:button variant="ghost" icon-trailing="chevron-down" size="sm">
+                        <template x-if="mode === 'light'"><flux:icon.sun class="size-4" /></template>
+                        <template x-if="mode === 'dark'"><flux:icon.moon class="size-4" /></template>
+                        <template x-if="mode === 'system'"><flux:icon.computer-desktop class="size-4" /></template>
+                    </flux:button>
+
                     <flux:menu>
-                        <flux:menu.item href="{{ route('settings.profile') }}">Profile</flux:menu.item>
-                        <form method="POST" action="{{ route('logout') }}">
-                            @csrf
-                            <flux:menu.item type="submit">Sign out</flux:menu.item>
-                        </form>
+                        <flux:menu.item icon="sun" x-on:click="set('light')" x-bind:class="mode === 'light' && 'font-semibold'">Light</flux:menu.item>
+                        <flux:menu.item icon="moon" x-on:click="set('dark')" x-bind:class="mode === 'dark' && 'font-semibold'">Dark</flux:menu.item>
+                        <flux:menu.item icon="computer-desktop" x-on:click="set('system')" x-bind:class="mode === 'system' && 'font-semibold'">System</flux:menu.item>
                     </flux:menu>
                 </flux:dropdown>
-            @endauth
+            </div>
         </div>
     </flux:header>
 
