@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Exceptions\UnsupportedDataTypeException;
+use App\Models\AttributionConnector;
 use App\Models\ExtractionBatch;
 use App\Services\Transformation\TransformerRegistry;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
@@ -56,6 +57,7 @@ class TransformBatch implements ShouldBeUnique, ShouldQueue
         }
 
         $this->batch->markTransforming();
+        $this->batch->integration->markDataTypeStatus($this->batch->data_type, 'transforming');
 
         Log::info("TransformBatch: Starting transformation for batch [{$this->batch->id}]", [
             'data_type' => $this->batch->data_type,
@@ -75,6 +77,7 @@ class TransformBatch implements ShouldBeUnique, ShouldQueue
         });
 
         $this->batch->markTransformed();
+        $this->batch->integration->markDataTypeStatus($this->batch->data_type, 'transformed');
 
         // Reset force_transform flag after successful transformation
         if ($this->batch->force_transform) {
@@ -116,6 +119,7 @@ class TransformBatch implements ShouldBeUnique, ShouldQueue
         }
 
         $this->batch->markTransformFailed($exception->getMessage());
+        $this->batch->integration->markDataTypeStatus($this->batch->data_type, 'transform_failed');
     }
 
     /**
@@ -134,14 +138,30 @@ class TransformBatch implements ShouldBeUnique, ShouldQueue
             ->exists();
 
         if (! $pendingBatches) {
-            $workspace = $this->batch->integration->workspace;
+            $integration = $this->batch->integration;
+            $workspace = $integration->workspace;
 
-            if ($workspace) {
+            if (! $workspace) {
+                return;
+            }
+
+            $hasAttributionConnectors = AttributionConnector::where('workspace_id', $workspace->id)
+                ->active()
+                ->exists();
+
+            if ($hasAttributionConnectors) {
                 Log::info("TransformBatch: All batches transformed for integration [{$this->batch->integration_id}], dispatching attribution", [
                     'workspace_id' => $workspace->id,
                 ]);
 
+                $integration->markSyncPhase('attributing');
                 ProcessAttribution::dispatch($workspace);
+            } else {
+                Log::info("TransformBatch: All batches transformed for integration [{$this->batch->integration_id}], no attribution connectors — marking sync completed", [
+                    'workspace_id' => $workspace->id,
+                ]);
+
+                $integration->markSyncCompleted();
             }
         }
     }

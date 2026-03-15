@@ -11,23 +11,23 @@ class CampaignEmailFieldMap
      */
     protected static array $maps = [
         'activecampaign' => [
-            'campaignid' => 'external_id',
+            'external_id' => 'external_id',
             'name' => 'name',
             'subject' => 'subject',
             'from_name' => 'from_name',
             'from_email' => 'from_email',
             'type' => 'type',
-            'total_sent' => 'sent',
+            'sent' => 'sent',
             'delivered' => 'delivered',
-            'bounced' => 'bounced',
+            'bounces' => 'bounced',
             'complaints' => 'complaints',
             'unsubscribes' => 'unsubscribes',
             'opens' => 'opens',
             'unique_opens' => 'unique_opens',
             'clicks' => 'clicks',
             'unique_clicks' => 'unique_clicks',
-            'revenue' => 'platform_revenue',
-            'send_date' => 'sent_at',
+            'platform_revenue' => 'platform_revenue',
+            'sent_at' => 'sent_at',
         ],
         'expertsender' => [
             'Id' => 'external_id',

@@ -100,7 +100,7 @@ class ExtractionBatch extends Model
     {
         $this->status = self::STATUS_FAILED;
         $this->failed_at = now();
-        $this->error = $error;
+        $this->error = mb_substr($error, 0, 60000);
         $this->save();
     }
 
@@ -108,7 +108,7 @@ class ExtractionBatch extends Model
     {
         $this->status = self::STATUS_TRANSFORM_FAILED;
         $this->failed_at = now();
-        $this->error = $error;
+        $this->error = mb_substr($error, 0, 60000);
         $this->save();
     }
 

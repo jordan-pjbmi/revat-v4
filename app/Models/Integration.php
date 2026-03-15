@@ -149,18 +149,45 @@ class Integration extends Model
         return $this->last_synced_at->addMinutes($this->sync_interval_minutes)->isPast();
     }
 
+    public function isSyncStale(): bool
+    {
+        if (! $this->sync_in_progress) {
+            return false;
+        }
+
+        // Phase-aware stale thresholds
+        $threshold = match ($this->last_sync_status) {
+            'transforming' => 20,
+            'attributing' => 25,
+            default => 15,
+        };
+
+        return $this->updated_at->diffInMinutes(now()) > $threshold;
+    }
+
     public function markSyncStarted(): void
     {
         $this->sync_in_progress = true;
         $this->save();
     }
 
-    public function markDataTypeCompleted(string $dataType): void
+    public function markSyncPhase(string $phase): void
+    {
+        $this->last_sync_status = $phase;
+        $this->save();
+    }
+
+    public function markDataTypeStatus(string $dataType, string $status): void
     {
         $statuses = $this->sync_statuses ?? [];
-        $statuses[$dataType] = 'completed';
+        $statuses[$dataType] = $status;
         $this->sync_statuses = $statuses;
         $this->save();
+    }
+
+    public function markDataTypeCompleted(string $dataType): void
+    {
+        $this->markDataTypeStatus($dataType, 'completed');
     }
 
     public function markDataTypeFailed(string $dataType, string $error): void

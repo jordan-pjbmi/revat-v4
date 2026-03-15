@@ -54,8 +54,7 @@ class UpsertRawData implements ShouldQueue
 
             $batch->records_count = $recordCount;
             $batch->save();
-            $batch->markCompleted();
-            $integration->markDataTypeCompleted($batch->data_type);
+            $integration->markDataTypeStatus($batch->data_type, 'loaded');
         } catch (\Throwable $e) {
             $batch->markFailed("Upsert failed: {$e->getMessage()}");
 

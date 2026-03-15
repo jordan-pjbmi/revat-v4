@@ -51,6 +51,7 @@ class ExtractIntegration implements ShouldBeUnique, ShouldQueue
         }
 
         $integration->markSyncStarted();
+        $integration->markSyncPhase('extracting');
 
         $dataTypes = $integration->data_types ?? [];
         if (empty($dataTypes)) {
@@ -69,7 +70,8 @@ class ExtractIntegration implements ShouldBeUnique, ShouldQueue
             ->allowFailures()
             ->name("Extract {$integration->platform}:{$integration->name}")
             ->then(function () use ($integration) {
-                $integration->fresh()?->markSyncCompleted();
+                // Extraction done — data awaits transformation
+                $integration->fresh()?->markSyncPhase('transforming');
             })
             ->catch(function ($batch, $e) use ($integration) {
                 Log::error("Extraction batch failed for integration {$integration->id}: {$e->getMessage()}");
@@ -82,8 +84,6 @@ class ExtractIntegration implements ShouldBeUnique, ShouldQueue
 
                 if ($batch->failedJobs > 0 && $batch->failedJobs >= $batch->totalJobs) {
                     $fresh->markSyncFailed('All data type extractions failed.');
-                } elseif ($batch->failedJobs > 0) {
-                    $fresh->markSyncCompleted();
                 }
             })
             ->onQueue(config('queues.extraction'))

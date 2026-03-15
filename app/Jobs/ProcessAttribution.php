@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\AttributionConnector;
+use App\Models\Integration;
 use App\Models\Workspace;
 use App\Services\AttributionEngine;
 use App\Services\ConnectorKeyProcessor;
@@ -92,6 +93,12 @@ class ProcessAttribution implements ShouldBeUnique, ShouldQueue
                 .'Failed connector IDs: '.implode(', ', $failedConnectors)
             );
         }
+
+        // Mark all attributing integrations in this workspace as completed
+        Integration::where('workspace_id', $this->workspace->id)
+            ->where('sync_in_progress', true)
+            ->where('last_sync_status', 'attributing')
+            ->each(fn (Integration $i) => $i->markSyncCompleted());
     }
 
     /**
@@ -105,6 +112,12 @@ class ProcessAttribution implements ShouldBeUnique, ShouldQueue
             'model' => $this->model,
             'error' => $exception->getMessage(),
         ]);
+
+        // Mark all attributing integrations in this workspace as failed
+        Integration::where('workspace_id', $this->workspace->id)
+            ->where('sync_in_progress', true)
+            ->where('last_sync_status', 'attributing')
+            ->each(fn (Integration $i) => $i->markSyncFailed('Attribution processing failed.'));
     }
 
     /**

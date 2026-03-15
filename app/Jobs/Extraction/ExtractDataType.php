@@ -64,6 +64,7 @@ class ExtractDataType implements ShouldQueue
         ]);
 
         $batch->markExtracting();
+        $integration->markDataTypeStatus($this->dataType, 'extracting');
 
         try {
             $connector = $registry->resolve($integration);
@@ -78,9 +79,12 @@ class ExtractDataType implements ShouldQueue
             // Batch insert extraction records in chunks
             $records->chunk(500)->each(function ($chunk) use ($batch) {
                 $inserts = $chunk->map(function ($record) use ($batch) {
+                    $externalId = $record['external_id']
+                        ?? $this->deriveExternalId($record);
+
                     return [
                         'extraction_batch_id' => $batch->id,
-                        'external_id' => $record['external_id'] ?? null,
+                        'external_id' => $externalId,
                         'payload' => json_encode($record),
                         'created_at' => now(),
                     ];
@@ -90,6 +94,7 @@ class ExtractDataType implements ShouldQueue
             });
 
             $batch->markExtracted();
+            $integration->markDataTypeStatus($this->dataType, 'extracted');
 
             // Dispatch upsert job
             UpsertRawData::dispatch($batch);
@@ -99,6 +104,17 @@ class ExtractDataType implements ShouldQueue
 
             throw $e;
         }
+    }
+
+    /**
+     * Generate a deterministic external_id from record data when the platform
+     * doesn't provide one (e.g. click records).
+     */
+    private function deriveExternalId(array $record): string
+    {
+        $payload = json_encode($record, JSON_THROW_ON_ERROR);
+
+        return hash('sha256', $payload);
     }
 
     public function failed(\Throwable $exception): void

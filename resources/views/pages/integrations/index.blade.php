@@ -149,7 +149,7 @@ new class extends Component
 
         $integration = Integration::forWorkspace($workspace->id)->findOrFail($integrationId);
 
-        if ($integration->sync_in_progress) {
+        if ($integration->sync_in_progress && ! $integration->isSyncStale()) {
             return;
         }
 
@@ -166,10 +166,6 @@ new class extends Component
         }
 
         $integration = Integration::forWorkspace($workspace->id)->findOrFail($integrationId);
-
-        if ($integration->sync_in_progress) {
-            return;
-        }
 
         $integration->delete();
     }
@@ -251,7 +247,19 @@ new class extends Component
                                         @if ($integration->sync_in_progress)
                                             <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
                                                 <svg class="w-3 h-3 animate-spin" viewBox="0 0 24 24" fill="none"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
-                                                Syncing
+                                                @switch($integration->last_sync_status)
+                                                    @case('extracting')
+                                                        Extracting data...
+                                                        @break
+                                                    @case('transforming')
+                                                        Processing data...
+                                                        @break
+                                                    @case('attributing')
+                                                        Running attribution...
+                                                        @break
+                                                    @default
+                                                        Syncing...
+                                                @endswitch
                                             </span>
                                         @elseif ($integration->last_sync_status === 'completed')
                                             <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
@@ -280,10 +288,10 @@ new class extends Component
                                                 variant="ghost"
                                                 icon="arrow-path"
                                                 wire:click="syncNow({{ $integration->id }})"
-                                                :disabled="$integration->sync_in_progress"
+                                                :disabled="$integration->sync_in_progress && ! $integration->isSyncStale()"
                                                 title="Sync Now"
                                             >
-                                                Sync Now
+                                                {{ $integration->isSyncStale() ? 'Retry Sync' : 'Sync Now' }}
                                             </flux:button>
                                             <flux:button
                                                 size="xs"
@@ -291,7 +299,6 @@ new class extends Component
                                                 icon="trash"
                                                 wire:click="deleteIntegration({{ $integration->id }})"
                                                 wire:confirm="Are you sure you want to delete this integration? This cannot be undone."
-                                                :disabled="$integration->sync_in_progress"
                                                 title="Delete"
                                                 class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
                                             />
