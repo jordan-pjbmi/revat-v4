@@ -80,7 +80,7 @@ new class extends Component
 <x-layouts.app>
     <x-slot:title>Attribution</x-slot:title>
 
-    @volt('attribution.index')
+    @volt('attribution.stats')
     <div>
         <div class="flex justify-between items-start mb-6">
             <div>

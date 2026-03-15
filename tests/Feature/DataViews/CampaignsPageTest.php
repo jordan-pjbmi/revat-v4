@@ -52,7 +52,7 @@ it('renders campaigns page with seeded data', function () {
     ]);
 
     $this->actingAs($this->user)
-        ->get(route('campaigns'))
+        ->get(route('campaigns.emails'))
         ->assertOk()
         ->assertSee('Campaigns')
         ->assertSee('Test Newsletter');
@@ -60,7 +60,7 @@ it('renders campaigns page with seeded data', function () {
 
 it('shows empty state when no campaigns', function () {
     $this->actingAs($this->user)
-        ->get(route('campaigns'))
+        ->get(route('campaigns.emails'))
         ->assertOk()
         ->assertSee('No campaigns found');
 });
@@ -75,6 +75,6 @@ it('enforces permission gate', function () {
 
     // User without any role cannot access
     $this->actingAs($viewer)
-        ->get(route('campaigns'))
+        ->get(route('campaigns.emails'))
         ->assertForbidden();
 });

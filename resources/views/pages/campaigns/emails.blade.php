@@ -85,7 +85,7 @@ new class extends Component
 <x-layouts.app>
     <x-slot:title>Campaigns</x-slot:title>
 
-    @volt('campaigns.index')
+    @volt('campaigns.emails')
     <div>
         <div class="flex justify-between items-start mb-6">
             <div>

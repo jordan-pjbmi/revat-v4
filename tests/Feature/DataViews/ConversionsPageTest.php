@@ -51,7 +51,7 @@ it('renders conversion-sales page with seeded data', function () {
     ]);
 
     $this->actingAs($this->user)
-        ->get(route('conversion-sales.index'))
+        ->get(route('conversions.sales'))
         ->assertOk()
         ->assertSee('Conversion Sales')
         ->assertSee('cv-test-123');
@@ -59,7 +59,7 @@ it('renders conversion-sales page with seeded data', function () {
 
 it('shows empty state when no conversions', function () {
     $this->actingAs($this->user)
-        ->get(route('conversion-sales.index'))
+        ->get(route('conversions.sales'))
         ->assertOk()
         ->assertSee('No conversion sales found');
 });
@@ -73,6 +73,6 @@ it('enforces permission gate', function () {
     $this->workspace->users()->attach($viewer->id);
 
     $this->actingAs($viewer)
-        ->get(route('conversion-sales.index'))
+        ->get(route('conversions.sales'))
         ->assertForbidden();
 });

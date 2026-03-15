@@ -28,7 +28,7 @@ beforeEach(function () {
 
 it('renders attribution index page', function () {
     $this->actingAs($this->user)
-        ->get(route('attribution'))
+        ->get(route('attribution.stats'))
         ->assertOk()
         ->assertSee('Attribution')
         ->assertSee('Attributed Conversions');
@@ -50,7 +50,7 @@ it('renders attribution conversions page', function () {
 
 it('attribution index shows empty state when no data', function () {
     $this->actingAs($this->user)
-        ->get(route('attribution'))
+        ->get(route('attribution.stats'))
         ->assertOk()
         ->assertSee('No attribution data available');
 });
@@ -64,7 +64,7 @@ it('enforces permission gate on attribution pages', function () {
     $this->workspace->users()->attach($viewer->id);
 
     $this->actingAs($viewer)
-        ->get(route('attribution'))
+        ->get(route('attribution.stats'))
         ->assertForbidden();
 
     $this->actingAs($viewer)

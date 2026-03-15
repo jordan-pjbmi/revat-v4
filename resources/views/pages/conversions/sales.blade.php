@@ -70,7 +70,7 @@ new class extends Component
 <x-layouts.app>
     <x-slot:title>Conversion Sales</x-slot:title>
 
-    @volt('conversion-sales.index')
+    @volt('conversions.sales')
     <div>
         <div class="flex justify-between items-start mb-6">
             <div>

@@ -38,21 +38,43 @@ Route::middleware(['auth', 'verified', 'onboarded', 'organization', 'workspace']
         ->name('reports')
         ->middleware('can:view');
 
-    Route::get('/campaigns', fn () => view('pages.campaigns.index'))
-        ->name('campaigns')
+    Route::get('/campaigns/emails', fn () => view('pages.campaigns.emails'))
+        ->name('campaigns.emails')
         ->middleware('can:view');
 
-    Route::get('/conversion-sales', fn () => view('pages.conversion-sales.index'))
-        ->name('conversion-sales.index')
+    Route::get('/campaigns/email-clicks', fn () => view('pages.campaigns.email-clicks'))
+        ->name('campaigns.email-clicks')
         ->middleware('can:view');
 
-    Route::get('/attribution', fn () => view('pages.attribution.index'))
-        ->name('attribution')
+    Route::get('/campaigns', fn () => redirect()->route('campaigns.emails'))
+        ->name('campaigns');
+
+    Route::get('/conversions/sales', fn () => view('pages.conversions.sales'))
+        ->name('conversions.sales')
         ->middleware('can:view');
 
-    Route::get('/integrations', fn () => view('pages.integrations.index'))
-        ->name('integrations')
-        ->middleware('can:integrate');
+    Route::get('/attribution', fn () => redirect()->route('attribution.stats'))
+        ->name('attribution');
+
+    Route::get('/attribution/programs', fn () => view('pages.attribution.programs'))
+        ->name('attribution.programs')
+        ->middleware('can:view');
+
+    Route::get('/attribution/initiatives', fn () => view('pages.attribution.initiatives'))
+        ->name('attribution.initiatives')
+        ->middleware('can:view');
+
+    Route::get('/attribution/efforts', fn () => view('pages.attribution.efforts'))
+        ->name('attribution.efforts')
+        ->middleware('can:view');
+
+    Route::get('/attribution/connectors', fn () => view('pages.attribution.connectors'))
+        ->name('attribution.connectors')
+        ->middleware('can:view');
+
+    Route::get('/attribution/stats', fn () => view('pages.attribution.stats'))
+        ->name('attribution.stats')
+        ->middleware('can:view');
 
     Route::get('/attribution/clicks', fn () => view('pages.attribution.clicks'))
         ->name('attribution.clicks')
@@ -62,7 +84,11 @@ Route::middleware(['auth', 'verified', 'onboarded', 'organization', 'workspace']
         ->name('attribution.conversion-sales')
         ->middleware('can:view');
 
-    Route::redirect('/conversions', '/conversion-sales', 301);
+    Route::get('/integrations', fn () => view('pages.integrations.index'))
+        ->name('integrations')
+        ->middleware('can:integrate');
+
+    Route::redirect('/conversion-sales', '/conversions/sales', 301);
 });
 
 // ── Auth Routes ─────────────────────────────────────────────────────────

@@ -22,8 +22,20 @@
         <flux:sidebar.nav>
             <flux:sidebar.item icon="home" href="{{ route('dashboard') }}" :current="request()->routeIs('dashboard')" data-testid="nav-dashboard">Dashboard</flux:sidebar.item>
             <flux:sidebar.item icon="chart-bar" href="{{ route('reports') }}" :current="request()->routeIs('reports')" data-testid="nav-reports">Reports</flux:sidebar.item>
-            <flux:sidebar.item icon="megaphone" href="{{ route('campaigns') }}" :current="request()->routeIs('campaigns')" data-testid="nav-campaigns">Campaigns</flux:sidebar.item>
-            <flux:sidebar.item icon="arrow-path" href="{{ route('attribution') }}" :current="request()->routeIs('attribution')" data-testid="nav-attribution">Attribution</flux:sidebar.item>
+            <flux:sidebar.group expandable heading="Campaigns" icon="megaphone" :expanded="request()->routeIs('campaigns.*')">
+                <flux:sidebar.item href="{{ route('campaigns.emails') }}" :current="request()->routeIs('campaigns.emails')" data-testid="nav-campaigns-emails">Emails</flux:sidebar.item>
+                <flux:sidebar.item href="{{ route('campaigns.email-clicks') }}" :current="request()->routeIs('campaigns.email-clicks')" data-testid="nav-campaigns-email-clicks">Email Clicks</flux:sidebar.item>
+            </flux:sidebar.group>
+            <flux:sidebar.group expandable heading="Conversions" icon="banknotes" :expanded="request()->routeIs('conversions.*')">
+                <flux:sidebar.item href="{{ route('conversions.sales') }}" :current="request()->routeIs('conversions.sales')" data-testid="nav-conversions-sales">Sales</flux:sidebar.item>
+            </flux:sidebar.group>
+            <flux:sidebar.group expandable heading="Attribution" icon="arrow-path" :expanded="request()->routeIs('attribution.*')">
+                <flux:sidebar.item href="{{ route('attribution.programs') }}" :current="request()->routeIs('attribution.programs')" data-testid="nav-attribution-programs">Programs</flux:sidebar.item>
+                <flux:sidebar.item href="{{ route('attribution.initiatives') }}" :current="request()->routeIs('attribution.initiatives')" data-testid="nav-attribution-initiatives">Initiatives</flux:sidebar.item>
+                <flux:sidebar.item href="{{ route('attribution.efforts') }}" :current="request()->routeIs('attribution.efforts')" data-testid="nav-attribution-efforts">Efforts</flux:sidebar.item>
+                <flux:sidebar.item href="{{ route('attribution.connectors') }}" :current="request()->routeIs('attribution.connectors')" data-testid="nav-attribution-connectors">Connectors</flux:sidebar.item>
+                <flux:sidebar.item href="{{ route('attribution.stats') }}" :current="request()->routeIs('attribution.stats')" data-testid="nav-attribution-stats">Stats</flux:sidebar.item>
+            </flux:sidebar.group>
             <flux:sidebar.item icon="puzzle-piece" href="{{ route('integrations') }}" :current="request()->routeIs('integrations')" data-testid="nav-integrations">Integrations</flux:sidebar.item>
             <flux:sidebar.item icon="cog-6-tooth" href="{{ route('settings.profile') }}" :current="request()->routeIs('settings.*')" data-testid="nav-settings">Settings</flux:sidebar.item>
         </flux:sidebar.nav>

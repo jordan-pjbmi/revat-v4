@@ -74,7 +74,7 @@ new class extends Component
                 <h1 class="text-[22px] font-bold text-slate-900 dark:text-white">Attribution Conversions</h1>
                 <p class="text-[13px] text-slate-600 dark:text-slate-300 mt-0.5">Conversion sales with attribution details</p>
             </div>
-            <flux:button href="{{ route('attribution') }}" variant="ghost" size="sm">Back to Attribution</flux:button>
+            <flux:button href="{{ route('attribution.stats') }}" variant="ghost" size="sm">Back to Stats</flux:button>
         </div>
 
         <div class="flex flex-wrap items-center gap-3 mb-4">
