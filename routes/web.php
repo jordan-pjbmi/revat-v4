@@ -38,6 +38,10 @@ Route::middleware(['auth', 'verified', 'onboarded', 'organization', 'workspace']
         ->name('reports')
         ->middleware('can:view');
 
+    Route::get('/reports/campaign-revenue', fn () => view('pages.reports.campaign-revenue'))
+        ->name('reports.campaign-revenue')
+        ->middleware('can:view');
+
     Route::get('/campaigns/emails', fn () => view('pages.campaigns.emails'))
         ->name('campaigns.emails')
         ->middleware('can:view');

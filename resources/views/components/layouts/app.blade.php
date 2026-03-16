@@ -21,7 +21,10 @@
 
         <flux:sidebar.nav>
             <flux:sidebar.item icon="home" href="{{ route('dashboard') }}" :current="request()->routeIs('dashboard')" data-testid="nav-dashboard">Dashboard</flux:sidebar.item>
-            <flux:sidebar.item icon="chart-bar" href="{{ route('reports') }}" :current="request()->routeIs('reports')" data-testid="nav-reports">Reports</flux:sidebar.item>
+            <flux:sidebar.group expandable heading="Reports" icon="chart-bar" :expanded="request()->routeIs('reports*')">
+                <flux:sidebar.item href="{{ route('reports') }}" :current="request()->routeIs('reports')" data-testid="nav-reports">Overview</flux:sidebar.item>
+                <flux:sidebar.item href="{{ route('reports.campaign-revenue') }}" :current="request()->routeIs('reports.campaign-revenue')" data-testid="nav-reports-campaign-revenue">Campaign Revenue</flux:sidebar.item>
+            </flux:sidebar.group>
             <flux:sidebar.group expandable heading="Campaigns" icon="megaphone" :expanded="request()->routeIs('campaigns.*')">
                 <flux:sidebar.item href="{{ route('campaigns.emails') }}" :current="request()->routeIs('campaigns.emails')" data-testid="nav-campaigns-emails">Emails</flux:sidebar.item>
                 <flux:sidebar.item href="{{ route('campaigns.email-clicks') }}" :current="request()->routeIs('campaigns.email-clicks')" data-testid="nav-campaigns-email-clicks">Email Clicks</flux:sidebar.item>
