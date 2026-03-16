@@ -6,6 +6,7 @@ use App\Models\Integration;
 use App\Services\Integrations\ConnectorRegistry;
 use App\Services\WorkspaceContext;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Livewire\Volt\Component;
 
 new class extends Component
@@ -261,6 +262,16 @@ new class extends Component
             $rules['fieldMappings'] = ['required', 'array', 'min:1'];
             $rules['fieldMappings.*.campaign'] = ['required', 'string'];
             $rules['fieldMappings.*.conversion'] = ['required', 'string'];
+
+            $uniqueRule = Rule::unique('attribution_connectors', 'campaign_integration_id')
+                ->where('workspace_id', $workspace->id)
+                ->where('conversion_integration_id', $this->conversionIntegrationId)
+                ->where('campaign_data_type', $this->campaignDataType)
+                ->where('conversion_data_type', $this->conversionDataType);
+            if ($this->editingId) {
+                $uniqueRule->ignore($this->editingId);
+            }
+            $rules['campaignIntegrationId'][] = $uniqueRule;
         } else {
             $rules['effortCodeField'] = ['required', 'string'];
             $rules['effortCodeSource'] = ['required', 'in:campaign,conversion'];
