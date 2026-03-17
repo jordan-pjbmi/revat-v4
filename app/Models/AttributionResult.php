@@ -14,6 +14,8 @@ class AttributionResult extends Model
         'conversion_type',
         'conversion_id',
         'effort_id',
+        'campaign_type',
+        'campaign_id',
         'model',
         'weight',
         'matched_at',
@@ -52,6 +54,14 @@ class AttributionResult extends Model
         return $this->morphTo('conversion');
     }
 
+    /**
+     * Resolve the campaign polymorphically.
+     */
+    public function campaign(): MorphTo
+    {
+        return $this->morphTo('campaign');
+    }
+
     // ── Scopes ───────────────────────────────────────────────────────
 
     public function scopeForModel($query, string $model): void
@@ -62,5 +72,10 @@ class AttributionResult extends Model
     public function scopeForConversion($query, string $type, int $id): void
     {
         $query->where('conversion_type', $type)->where('conversion_id', $id);
+    }
+
+    public function scopeForCampaign($query, string $type, int $id): void
+    {
+        $query->where('campaign_type', $type)->where('campaign_id', $id);
     }
 }

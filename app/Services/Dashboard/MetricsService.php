@@ -208,7 +208,7 @@ class MetricsService
      *
      * @return array{attributed_conversions: int, attributed_revenue: float, total_weight: float}
      */
-    public function getAttributionSummary(Carbon $start, Carbon $end, string $model = 'first_click'): array
+    public function getAttributionSummary(Carbon $start, Carbon $end, string $model = 'first_touch'): array
     {
         $row = SummaryAttributionDaily::query()
             ->whereIn('workspace_id', $this->workspaceIds)
@@ -231,7 +231,7 @@ class MetricsService
      *
      * @return array<int, array{effort_id: int, effort_name: string, attributed_conversions: int, attributed_revenue: float, total_weight: float}>
      */
-    public function getAttributionByEffort(Carbon $start, Carbon $end, string $model = 'first_click'): array
+    public function getAttributionByEffort(Carbon $start, Carbon $end, string $model = 'first_touch'): array
     {
         $rows = SummaryAttributionByEffort::query()
             ->whereIn('summary_attribution_by_effort.workspace_id', $this->workspaceIds)

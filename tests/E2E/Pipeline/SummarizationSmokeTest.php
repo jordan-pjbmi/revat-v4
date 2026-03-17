@@ -130,6 +130,8 @@ it('creates summary table records from fact data', function () {
             'model' => 'first_touch',
             'weight' => 1.0,
             'matched_at' => now(),
+            'campaign_type' => 'campaign_email',
+            'campaign_id' => 1,
         ]);
     }
 

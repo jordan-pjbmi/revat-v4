@@ -194,7 +194,7 @@ it('creates attribution results for matching campaigns and conversions', functio
 
     // Run attribution engine directly (keys and record_keys are pre-created above)
     $engine = app(AttributionEngine::class);
-    foreach (['first_click', 'last_click', 'linear'] as $model) {
+    foreach (['first_touch', 'last_touch', 'linear'] as $model) {
         $engine->run($this->workspace, $connector, $model);
     }
 
@@ -202,10 +202,10 @@ it('creates attribution results for matching campaigns and conversions', functio
     $results = AttributionResult::where('workspace_id', $this->workspace->id)->get();
     expect($results->count())->toBeGreaterThan(0);
 
-    // Verify all three models are present (first_click, last_click, linear)
+    // Verify all three models are present (first_touch, last_touch, linear)
     $models = $results->pluck('model')->unique()->sort()->values();
-    expect($models->toArray())->toContain('first_click');
-    expect($models->toArray())->toContain('last_click');
+    expect($models->toArray())->toContain('first_touch');
+    expect($models->toArray())->toContain('last_touch');
     expect($models->toArray())->toContain('linear');
 
     // Verify weights are positive

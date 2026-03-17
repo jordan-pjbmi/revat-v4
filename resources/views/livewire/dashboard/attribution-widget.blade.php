@@ -2,8 +2,8 @@
     <div class="flex justify-between items-center mb-4">
         <span class="text-[15px] font-semibold text-slate-800 dark:text-slate-200">Attribution</span>
         <flux:select wire:model.live="model" size="sm" class="w-36">
-            <flux:select.option value="first_click">First Touch</flux:select.option>
-            <flux:select.option value="last_click">Last Touch</flux:select.option>
+            <flux:select.option value="first_touch">First Touch</flux:select.option>
+            <flux:select.option value="last_touch">Last Touch</flux:select.option>
             <flux:select.option value="linear">Linear</flux:select.option>
         </flux:select>
     </div>

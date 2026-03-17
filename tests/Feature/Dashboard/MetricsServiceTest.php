@@ -230,14 +230,14 @@ it('getAttributionSummary returns correct totals', function () {
     DB::table('summary_attribution_daily')->insert([
         'workspace_id' => $this->workspace->id,
         'summary_date' => '2026-03-01',
-        'model' => 'first_click',
+        'model' => 'first_touch',
         'attributed_conversions' => 8,
         'attributed_revenue' => 1500.00,
         'total_weight' => 8.0,
         'summarized_at' => now(),
     ]);
 
-    $summary = $this->service->getAttributionSummary($this->start, $this->end, 'first_click');
+    $summary = $this->service->getAttributionSummary($this->start, $this->end, 'first_touch');
 
     expect($summary['attributed_conversions'])->toBe(8);
     expect($summary['attributed_revenue'])->toBe(1500.00);
@@ -260,14 +260,14 @@ it('getAttributionByEffort returns effort-level breakdown', function () {
         'workspace_id' => $this->workspace->id,
         'effort_id' => $effort->id,
         'summary_date' => '2026-03-01',
-        'model' => 'first_click',
+        'model' => 'first_touch',
         'attributed_conversions' => 5,
         'attributed_revenue' => 800.00,
         'total_weight' => 5.0,
         'summarized_at' => now(),
     ]);
 
-    $efforts = $this->service->getAttributionByEffort($this->start, $this->end, 'first_click');
+    $efforts = $this->service->getAttributionByEffort($this->start, $this->end, 'first_touch');
 
     expect($efforts)->toHaveCount(1);
     expect($efforts[0]['effort_name'])->toBe('Newsletter Campaign');

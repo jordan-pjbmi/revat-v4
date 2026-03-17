@@ -21,6 +21,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Services\AttributionEngine;
 use App\Services\ConnectorKeyProcessor;
+use App\Services\EffortResolver;
 use App\Services\Dashboard\MetricsService;
 use App\Services\Transformation\TransformerRegistry;
 use Database\Seeders\RolesAndPermissionsSeeder;
@@ -221,14 +222,14 @@ it('flows data through the entire pipeline: extract -> transform -> attribute ->
 
     // Run attribution (ConnectorKeyProcessor will auto-generate keys and record keys)
     $job = new ProcessAttribution($workspace);
-    $job->handle(app(ConnectorKeyProcessor::class), app(AttributionEngine::class));
+    $job->handle(app(ConnectorKeyProcessor::class), app(EffortResolver::class), app(AttributionEngine::class));
 
     $results = AttributionResult::where('workspace_id', $workspace->id)->get();
     expect($results->count())->toBeGreaterThan(0);
 
     $models = $results->pluck('model')->unique()->sort()->values()->toArray();
-    expect($models)->toContain('first_click');
-    expect($models)->toContain('last_click');
+    expect($models)->toContain('first_touch');
+    expect($models)->toContain('last_touch');
     expect($models)->toContain('linear');
 
     // ── Stage 5: Summarization ──────────────────────────────────────────

@@ -10,7 +10,7 @@ use InvalidArgumentException;
 
 class AttributionEngine
 {
-    public const VALID_MODELS = ['first_click', 'last_click', 'linear'];
+    public const VALID_MODELS = ['first_touch', 'last_touch', 'linear'];
 
     /**
      * Run attribution for a workspace/connector/model combination.
@@ -49,9 +49,11 @@ class AttributionEngine
                 'conversion_type' => 'conversion_sale',
                 'conversion_id' => $result['conversion_id'],
                 'effort_id' => $result['effort_id'],
+                'campaign_type' => $result['campaign_type'],
+                'campaign_id' => $result['campaign_id'],
                 'model' => $model,
                 'weight' => $result['weight'],
-                'matched_at' => $now,
+                'matched_at' => $result['matched_at'],
                 'created_at' => $now,
                 'updated_at' => $now,
             ];
@@ -60,7 +62,7 @@ class AttributionEngine
         // Upsert on the unique constraint
         DB::table('attribution_results')->upsert(
             $inserts,
-            ['conversion_type', 'conversion_id', 'effort_id', 'model'],
+            ['conversion_type', 'conversion_id', 'effort_id', 'campaign_type', 'campaign_id', 'model'],
             ['weight', 'matched_at', 'connector_id', 'workspace_id', 'updated_at']
         );
 
@@ -97,6 +99,8 @@ class AttributionEngine
                 'ak.effort_id',
                 'cec.clicked_at',
                 'cec.id as click_id',
+                'ce.id as campaign_id',
+                DB::raw("'campaign_email' as campaign_type"),
             ]);
 
         $matches = $query->get();
@@ -134,8 +138,10 @@ class AttributionEngine
             ->select([
                 'cs.id as conversion_id',
                 'ak.effort_id',
-                'ce.sent_at as clicked_at',  // Use sent_at as the timestamp for ordering
+                'ce.sent_at as clicked_at',
                 'ce.id as click_id',
+                'ce.id as campaign_id',
+                DB::raw("'campaign_email' as campaign_type"),
             ]);
 
         $matches = $query->get();
@@ -157,9 +163,9 @@ class AttributionEngine
 
         foreach ($grouped as $conversionId => $conversionMatches) {
             match ($model) {
-                'first_click' => $this->applyFirstClick($results, $conversionId, $conversionMatches, $timestampField),
-                'last_click' => $this->applyLastClick($results, $conversionId, $conversionMatches, $timestampField),
-                'linear' => $this->applyLinear($results, $conversionId, $conversionMatches),
+                'first_touch' => $this->applyFirstTouch($results, $conversionId, $conversionMatches, $timestampField),
+                'last_touch' => $this->applyLastTouch($results, $conversionId, $conversionMatches, $timestampField),
+                'linear' => $this->applyLinear($results, $conversionId, $conversionMatches, $timestampField),
             };
         }
 
@@ -167,47 +173,56 @@ class AttributionEngine
     }
 
     /**
-     * First click: earliest timestamp wins, weight = 1.0.
+     * First touch: earliest timestamp wins, weight = 1.0.
      */
-    protected function applyFirstClick(array &$results, $conversionId, $matches, string $timestampField): void
+    protected function applyFirstTouch(array &$results, $conversionId, $matches, string $timestampField): void
     {
         $winner = $matches->sortBy($timestampField)->first();
 
         $results[] = [
             'conversion_id' => $conversionId,
             'effort_id' => $winner->effort_id,
+            'campaign_type' => $winner->campaign_type,
+            'campaign_id' => $winner->campaign_id,
             'weight' => 1.0,
+            'matched_at' => $winner->$timestampField,
         ];
     }
 
     /**
-     * Last click: latest timestamp wins, weight = 1.0.
+     * Last touch: latest timestamp wins, weight = 1.0.
      */
-    protected function applyLastClick(array &$results, $conversionId, $matches, string $timestampField): void
+    protected function applyLastTouch(array &$results, $conversionId, $matches, string $timestampField): void
     {
         $winner = $matches->sortByDesc($timestampField)->first();
 
         $results[] = [
             'conversion_id' => $conversionId,
             'effort_id' => $winner->effort_id,
+            'campaign_type' => $winner->campaign_type,
+            'campaign_id' => $winner->campaign_id,
             'weight' => 1.0,
+            'matched_at' => $winner->$timestampField,
         ];
     }
 
     /**
-     * Linear: equal weight across all unique efforts.
+     * Linear: equal weight across all unique (effort, campaign) touchpoint pairs.
      */
-    protected function applyLinear(array &$results, $conversionId, $matches): void
+    protected function applyLinear(array &$results, $conversionId, $matches, string $timestampField): void
     {
-        // Group by effort_id to get unique efforts
-        $uniqueEfforts = $matches->pluck('effort_id')->unique();
-        $weight = round(1.0 / $uniqueEfforts->count(), 4);
+        // Group by unique (effort_id, campaign_id) pairs
+        $uniqueTouchpoints = $matches->unique(fn ($m) => $m->effort_id.'|'.$m->campaign_id);
+        $weight = round(1.0 / $uniqueTouchpoints->count(), 4);
 
-        foreach ($uniqueEfforts as $effortId) {
+        foreach ($uniqueTouchpoints as $touchpoint) {
             $results[] = [
                 'conversion_id' => $conversionId,
-                'effort_id' => $effortId,
+                'effort_id' => $touchpoint->effort_id,
+                'campaign_type' => $touchpoint->campaign_type,
+                'campaign_id' => $touchpoint->campaign_id,
                 'weight' => $weight,
+                'matched_at' => $touchpoint->$timestampField,
             ];
         }
     }

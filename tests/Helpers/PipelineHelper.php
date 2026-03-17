@@ -202,6 +202,8 @@ trait PipelineHelper
                     'connector_id' => $connector->id,
                     'conversion_type' => 'conversion_sale',
                     'conversion_id' => $conversion->id,
+                    'campaign_type' => 'campaign_email',
+                    'campaign_id' => $campaigns->random()->id,
                     'effort_id' => $effort->id,
                     'model' => $model,
                     'weight' => 1.0,

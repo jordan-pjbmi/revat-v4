@@ -121,11 +121,11 @@ it('SummaryAttributionDaily has model scope', function () {
     expect($model->getKeyName())->toBe(['workspace_id', 'summary_date', 'model']);
 
     DB::table('summary_attribution_daily')->insert([
-        ['workspace_id' => $this->workspace->id, 'summary_date' => '2026-03-01', 'model' => 'first_click', 'attributed_conversions' => 5, 'attributed_revenue' => 500.00, 'total_weight' => 5.0000, 'summarized_at' => now()],
-        ['workspace_id' => $this->workspace->id, 'summary_date' => '2026-03-01', 'model' => 'last_click', 'attributed_conversions' => 5, 'attributed_revenue' => 500.00, 'total_weight' => 5.0000, 'summarized_at' => now()],
+        ['workspace_id' => $this->workspace->id, 'summary_date' => '2026-03-01', 'model' => 'first_touch', 'attributed_conversions' => 5, 'attributed_revenue' => 500.00, 'total_weight' => 5.0000, 'summarized_at' => now()],
+        ['workspace_id' => $this->workspace->id, 'summary_date' => '2026-03-01', 'model' => 'last_touch', 'attributed_conversions' => 5, 'attributed_revenue' => 500.00, 'total_weight' => 5.0000, 'summarized_at' => now()],
     ]);
 
-    $results = SummaryAttributionDaily::forModel('first_click')->get();
+    $results = SummaryAttributionDaily::forModel('first_touch')->get();
     expect($results)->toHaveCount(1);
 });
 
@@ -156,7 +156,7 @@ it('SummaryAttributionByEffort has effort relationship and scope', function () {
         'workspace_id' => $this->workspace->id,
         'effort_id' => $effort->id,
         'summary_date' => '2026-03-01',
-        'model' => 'first_click',
+        'model' => 'first_touch',
         'attributed_conversions' => 3,
         'attributed_revenue' => 300.00,
         'total_weight' => 3.0000,

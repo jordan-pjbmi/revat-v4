@@ -144,8 +144,8 @@ it('end-to-end: processes all active connectors and all models', function () {
     $job->handle(app(ConnectorKeyProcessor::class), app(EffortResolver::class), app(AttributionEngine::class));
 
     // Should have results for all 3 models
-    expect(AttributionResult::where('model', 'first_click')->count())->toBe(1);
-    expect(AttributionResult::where('model', 'last_click')->count())->toBe(1);
+    expect(AttributionResult::where('model', 'first_touch')->count())->toBe(1);
+    expect(AttributionResult::where('model', 'last_touch')->count())->toBe(1);
     expect(AttributionResult::where('model', 'linear')->count())->toBe(1);
 
     // EffortResolver auto-created an effort on the attribution key
@@ -157,6 +157,12 @@ it('end-to-end: processes all active connectors and all models', function () {
     expect($autoEffort)->not->toBeNull();
     expect($autoEffort->auto_generated)->toBeTrue();
     expect(AttributionResult::where('effort_id', $autoEffort->id)->count())->toBe(3);
+
+    // All results should have campaign_type and campaign_id populated
+    AttributionResult::all()->each(function ($result) {
+        expect($result->campaign_type)->not->toBeNull();
+        expect($result->campaign_id)->not->toBeNull();
+    });
 
     Bus::assertDispatched(RunSummarization::class);
 });
@@ -249,11 +255,11 @@ it('runs only the specified model when provided', function () {
 
     Bus::fake([RunSummarization::class]);
 
-    $job = new ProcessAttribution($this->workspace, $connector, 'first_click');
+    $job = new ProcessAttribution($this->workspace, $connector, 'first_touch');
     $job->handle(app(ConnectorKeyProcessor::class), app(EffortResolver::class), app(AttributionEngine::class));
 
-    expect(AttributionResult::where('model', 'first_click')->count())->toBe(1);
-    expect(AttributionResult::where('model', 'last_click')->count())->toBe(0);
+    expect(AttributionResult::where('model', 'first_touch')->count())->toBe(1);
+    expect(AttributionResult::where('model', 'last_touch')->count())->toBe(0);
     expect(AttributionResult::where('model', 'linear')->count())->toBe(0);
 });
 

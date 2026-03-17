@@ -14,7 +14,7 @@ new class extends Component
 
     public string $end;
 
-    public string $model = 'first_click';
+    public string $model = 'first_touch';
 
     #[Locked]
     public array $summary = [];
@@ -93,8 +93,8 @@ new class extends Component
             <livewire:dashboard.date-filter />
 
             <flux:select wire:model.live="model" size="sm" class="w-36">
-                <flux:select.option value="first_click">First Touch</flux:select.option>
-                <flux:select.option value="last_click">Last Touch</flux:select.option>
+                <flux:select.option value="first_touch">First Touch</flux:select.option>
+                <flux:select.option value="last_touch">Last Touch</flux:select.option>
                 <flux:select.option value="linear">Linear</flux:select.option>
             </flux:select>
         </div>

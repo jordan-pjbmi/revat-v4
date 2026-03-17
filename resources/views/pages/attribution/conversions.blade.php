@@ -49,12 +49,17 @@ new class extends Component
                     ->where('attribution_results.conversion_type', '=', 'conversion_sale');
             })
             ->leftJoin('efforts', 'attribution_results.effort_id', '=', 'efforts.id')
+            ->leftJoin('campaign_emails as ce', function ($join) {
+                $join->on('attribution_results.campaign_id', '=', 'ce.id')
+                    ->where('attribution_results.campaign_type', '=', 'campaign_email');
+            })
             ->whereBetween('conversion_sales.converted_at', [$this->start, Carbon::parse($this->end)->endOfDay()])
             ->select(
                 'attribution_results.*',
                 'conversion_sales.external_id as conversion_external_id',
                 'conversion_sales.revenue as conversion_revenue',
                 'efforts.name as effort_name',
+                'ce.name as campaign_name',
             )
             ->orderByDesc('attribution_results.matched_at');
 
@@ -90,6 +95,7 @@ new class extends Component
                                 <th class="sticky left-0 bg-white dark:bg-slate-800 text-[10.5px] font-semibold uppercase tracking-[0.4px] text-slate-400 px-3 py-[11px]">External ID</th>
                                 <th class="text-[10.5px] font-semibold uppercase tracking-[0.4px] text-slate-400 px-3 py-[11px]">Revenue</th>
                                 <th class="text-[10.5px] font-semibold uppercase tracking-[0.4px] text-slate-400 px-3 py-[11px]">Attributed To</th>
+                                <th class="text-[10.5px] font-semibold uppercase tracking-[0.4px] text-slate-400 px-3 py-[11px]">Campaign</th>
                                 <th class="text-[10.5px] font-semibold uppercase tracking-[0.4px] text-slate-400 px-3 py-[11px]">Model</th>
                                 <th class="text-[10.5px] font-semibold uppercase tracking-[0.4px] text-slate-400 px-3 py-[11px]">Weight</th>
                                 <th class="text-[10.5px] font-semibold uppercase tracking-[0.4px] text-slate-400 px-3 py-[11px]">Matched At</th>
@@ -101,6 +107,7 @@ new class extends Component
                                     <td class="sticky left-0 bg-white dark:bg-slate-800 px-3 py-2.5 font-mono text-slate-800 dark:text-slate-200">{{ $result->conversion_external_id ?? '-' }}</td>
                                     <td class="px-3 py-2.5 font-mono">${{ number_format($result->conversion_revenue ?? 0, 2) }}</td>
                                     <td class="px-3 py-2.5 font-sans text-slate-700 dark:text-slate-300">{{ $result->effort_name ?? 'Unknown' }}</td>
+                                    <td class="px-3 py-2.5 font-sans text-slate-700 dark:text-slate-300">{{ $result->campaign_name ?? '-' }}</td>
                                     <td class="px-3 py-2.5">
                                         <span class="inline-flex items-center px-2 py-0.5 text-xs font-medium bg-blue-100 dark:bg-blue-500/15 text-blue-700 dark:text-blue-300 rounded">
                                             {{ str_replace('_', ' ', ucfirst($result->model)) }}

@@ -13,7 +13,7 @@ use Livewire\Component;
 #[Lazy]
 class AttributionWidget extends Component
 {
-    public string $model = 'first_click';
+    public string $model = 'first_touch';
 
     #[Locked]
     public array $summary = [];

@@ -97,7 +97,7 @@ function linkRecordToKey(int $connectorId, int $workspaceId, string $email, stri
     );
 }
 
-it('first_click: single match produces weight 1.0 with earliest click', function () {
+it('first_touch: single match produces weight 1.0 with earliest click', function () {
     $email = 'alice@example.com';
 
     $campaign = CampaignEmail::create([
@@ -120,17 +120,19 @@ it('first_click: single match produces weight 1.0 with earliest click', function
     linkRecordToKey($this->connector->id, $this->workspace->id, $email, 'campaign_email_click', $click->id, $this->effort1->id);
     linkRecordToKey($this->connector->id, $this->workspace->id, $email, 'conversion_sale', $conversion->id);
 
-    $count = $this->engine->run($this->workspace, $this->connector, 'first_click');
+    $count = $this->engine->run($this->workspace, $this->connector, 'first_touch');
 
     expect($count)->toBe(1);
 
     $result = AttributionResult::first();
     expect($result->effort_id)->toBe($this->effort1->id);
     expect((float) $result->weight)->toBe(1.0);
-    expect($result->model)->toBe('first_click');
+    expect($result->model)->toBe('first_touch');
+    expect($result->campaign_type)->toBe('campaign_email');
+    expect($result->campaign_id)->toBe($campaign->id);
 });
 
-it('first_click: multi-click selects earliest click (same effort via key)', function () {
+it('first_touch: multi-click selects earliest click (same effort via key)', function () {
     $email = 'bob@example.com';
 
     // Two campaigns sharing same key, with different click timestamps
@@ -168,16 +170,18 @@ it('first_click: multi-click selects earliest click (same effort via key)', func
     linkRecordToKey($this->connector->id, $this->workspace->id, $email, 'campaign_email_click', $click2->id);
     linkRecordToKey($this->connector->id, $this->workspace->id, $email, 'conversion_sale', $conversion->id);
 
-    $count = $this->engine->run($this->workspace, $this->connector, 'first_click');
+    $count = $this->engine->run($this->workspace, $this->connector, 'first_touch');
 
     expect($count)->toBe(1);
 
     $result = AttributionResult::first();
     expect($result->effort_id)->toBe($this->effort1->id); // From key
     expect((float) $result->weight)->toBe(1.0);
+    expect($result->campaign_type)->toBe('campaign_email');
+    expect($result->campaign_id)->toBe($campaign1->id); // Earliest click → campaign1
 });
 
-it('first_click: multi-effort via two connectors selects earliest click', function () {
+it('first_touch: multi-effort via two connectors selects earliest click', function () {
     $email1 = 'alice@example.com';
     $email2 = 'bob@example.com';
 
@@ -230,8 +234,8 @@ it('first_click: multi-effort via two connectors selects earliest click', functi
     linkRecordToKey($connector2->id, $this->workspace->id, $email2, 'conversion_sale', $conversion->id);
 
     // Run both connectors
-    $count1 = $this->engine->run($this->workspace, $this->connector, 'first_click');
-    $count2 = $this->engine->run($this->workspace, $connector2, 'first_click');
+    $count1 = $this->engine->run($this->workspace, $this->connector, 'first_touch');
+    $count2 = $this->engine->run($this->workspace, $connector2, 'first_touch');
 
     expect($count1)->toBe(1);
     expect($count2)->toBe(1);
@@ -241,9 +245,13 @@ it('first_click: multi-effort via two connectors selects earliest click', functi
     $result2 = AttributionResult::where('connector_id', $connector2->id)->first();
     expect($result1->effort_id)->toBe($this->effort1->id);
     expect($result2->effort_id)->toBe($this->effort2->id);
+    expect($result1->campaign_type)->toBe('campaign_email');
+    expect($result1->campaign_id)->toBe($campaign1->id);
+    expect($result2->campaign_type)->toBe('campaign_email');
+    expect($result2->campaign_id)->toBe($campaign2->id);
 });
 
-it('first_click: no match produces no result', function () {
+it('first_touch: no match produces no result', function () {
     // Conversion with no matching campaign
     ConversionSale::create([
         'workspace_id' => $this->workspace->id,
@@ -252,13 +260,13 @@ it('first_click: no match produces no result', function () {
         'converted_at' => now(),
     ]);
 
-    $count = $this->engine->run($this->workspace, $this->connector, 'first_click');
+    $count = $this->engine->run($this->workspace, $this->connector, 'first_touch');
 
     expect($count)->toBe(0);
     expect(AttributionResult::count())->toBe(0);
 });
 
-it('last_click: single match produces weight 1.0 with latest click', function () {
+it('last_touch: single match produces weight 1.0 with latest click', function () {
     $email = 'charlie@example.com';
 
     $campaign = CampaignEmail::create([
@@ -281,15 +289,17 @@ it('last_click: single match produces weight 1.0 with latest click', function ()
     linkRecordToKey($this->connector->id, $this->workspace->id, $email, 'campaign_email_click', $click->id, $this->effort1->id);
     linkRecordToKey($this->connector->id, $this->workspace->id, $email, 'conversion_sale', $conversion->id);
 
-    $count = $this->engine->run($this->workspace, $this->connector, 'last_click');
+    $count = $this->engine->run($this->workspace, $this->connector, 'last_touch');
 
     expect($count)->toBe(1);
     $result = AttributionResult::first();
     expect((float) $result->weight)->toBe(1.0);
-    expect($result->model)->toBe('last_click');
+    expect($result->model)->toBe('last_touch');
+    expect($result->campaign_type)->toBe('campaign_email');
+    expect($result->campaign_id)->toBe($campaign->id);
 });
 
-it('last_click: multi-click selects latest click (same effort via key)', function () {
+it('last_touch: multi-click selects latest click (same effort via key)', function () {
     $email = 'diana@example.com';
 
     $campaign1 = CampaignEmail::create([
@@ -325,11 +335,13 @@ it('last_click: multi-click selects latest click (same effort via key)', functio
     linkRecordToKey($this->connector->id, $this->workspace->id, $email, 'campaign_email_click', $click2->id);
     linkRecordToKey($this->connector->id, $this->workspace->id, $email, 'conversion_sale', $conversion->id);
 
-    $count = $this->engine->run($this->workspace, $this->connector, 'last_click');
+    $count = $this->engine->run($this->workspace, $this->connector, 'last_touch');
 
     expect($count)->toBe(1);
     $result = AttributionResult::first();
     expect($result->effort_id)->toBe($this->effort1->id); // Same effort from key
+    expect($result->campaign_type)->toBe('campaign_email');
+    expect($result->campaign_id)->toBe($campaign2->id); // Latest click → campaign2
 });
 
 it('linear: single match produces weight 1.0', function () {
@@ -360,6 +372,8 @@ it('linear: single match produces weight 1.0', function () {
     expect($count)->toBe(1);
     $result = AttributionResult::first();
     expect((float) $result->weight)->toBe(1.0);
+    expect($result->campaign_type)->toBe('campaign_email');
+    expect($result->campaign_id)->toBe($campaign->id);
 });
 
 it('linear: multi-effort via two connectors distributes weight across results', function () {
@@ -413,7 +427,7 @@ it('linear: multi-effort via two connectors distributes weight across results', 
     linkRecordToKey($connector2->id, $this->workspace->id, $email2, 'campaign_email_click', $click2->id, $this->effort2->id);
     linkRecordToKey($connector2->id, $this->workspace->id, $email2, 'conversion_sale', $conversion->id);
 
-    // Each connector produces 1 result with weight 1.0 (single effort per connector)
+    // Each connector produces 1 result with weight 1.0 (single unique (effort_id, campaign_id) pair per connector)
     $count1 = $this->engine->run($this->workspace, $this->connector, 'linear');
     $count2 = $this->engine->run($this->workspace, $connector2, 'linear');
 
@@ -423,10 +437,16 @@ it('linear: multi-effort via two connectors distributes weight across results', 
     $results = AttributionResult::where('model', 'linear')->get();
     expect($results)->toHaveCount(2);
 
-    // Each has weight 1.0 (single effort per connector run)
+    // Each has weight 1.0 (single unique (effort_id, campaign_id) pair per connector run)
     foreach ($results as $result) {
         expect((float) $result->weight)->toBe(1.0);
+        expect($result->campaign_type)->toBe('campaign_email');
     }
+
+    $result1 = AttributionResult::where('connector_id', $this->connector->id)->first();
+    $result2 = AttributionResult::where('connector_id', $connector2->id)->first();
+    expect($result1->campaign_id)->toBe($campaign1->id);
+    expect($result2->campaign_id)->toBe($campaign2->id);
 });
 
 it('re-running clears previous results before writing new ones', function () {
@@ -453,10 +473,10 @@ it('re-running clears previous results before writing new ones', function () {
     linkRecordToKey($this->connector->id, $this->workspace->id, $email, 'conversion_sale', $conversion->id);
 
     // Run twice
-    $this->engine->run($this->workspace, $this->connector, 'first_click');
+    $this->engine->run($this->workspace, $this->connector, 'first_touch');
     $countAfterFirst = AttributionResult::count();
 
-    $this->engine->run($this->workspace, $this->connector, 'first_click');
+    $this->engine->run($this->workspace, $this->connector, 'first_touch');
     $countAfterSecond = AttributionResult::count();
 
     // Should not accumulate — same count after re-run

@@ -74,31 +74,17 @@ new class extends Component
             return ['campaigns' => collect()->paginate(25)];
         }
 
-        // Attributed revenue per campaign_email in two steps to avoid fan-out:
-        // 1) Revenue per effort from attribution_results
-        // 2) Map effort → campaign_email via keys → record_keys → clicks
         $wsId = (int) $workspace->id;
-        $revenueSubquery = DB::query()
-            ->fromSub(function ($q) use ($wsId) {
-                $q->from('attribution_keys as ak')
-                    ->join('attribution_record_keys as ark', fn ($j) => $j->on('ark.attribution_key_id', '=', 'ak.id')->where('ark.record_type', 'campaign_email_click'))
-                    ->join('campaign_email_clicks as cec', fn ($j) => $j->on('cec.id', '=', 'ark.record_id')->whereNull('cec.deleted_at'))
-                    ->where('ak.workspace_id', $wsId)
-                    ->whereNotNull('ak.effort_id')
-                    ->groupBy('ak.effort_id', 'cec.campaign_email_id')
-                    ->select('ak.effort_id', 'cec.campaign_email_id');
-            }, 'ec')
-            ->joinSub(function ($q) use ($wsId) {
-                $q->from('attribution_results as ar')
-                    ->join('conversion_sales as cs', fn ($j) => $j->on('cs.id', '=', 'ar.conversion_id')->whereNull('cs.deleted_at'))
-                    ->where('ar.model', 'last_click')
-                    ->where('ar.conversion_type', 'conversion_sale')
-                    ->where('ar.workspace_id', $wsId)
-                    ->groupBy('ar.effort_id')
-                    ->select('ar.effort_id', DB::raw('SUM(cs.revenue * ar.weight) as effort_revenue'));
-            }, 're', fn ($j) => $j->on('re.effort_id', '=', 'ec.effort_id'))
-            ->groupBy('ec.campaign_email_id')
-            ->select('ec.campaign_email_id', DB::raw('SUM(re.effort_revenue) as attributed_revenue'));
+        $revenueSubquery = DB::table('summary_attribution_by_campaign as sac')
+            ->where('sac.workspace_id', $wsId)
+            ->where('sac.model', 'last_touch')
+            ->where('sac.campaign_type', 'campaign_email')
+            ->groupBy('sac.campaign_id')
+            ->select(
+                'sac.campaign_id as campaign_email_id',
+                DB::raw('SUM(sac.attributed_revenue) as attributed_revenue'),
+                DB::raw('SUM(sac.attributed_conversions) as attributed_conversions'),
+            );
 
         $query = CampaignEmail::query()
             ->leftJoinSub($revenueSubquery, 'attr', fn ($j) => $j->on('attr.campaign_email_id', '=', 'campaign_emails.id'))

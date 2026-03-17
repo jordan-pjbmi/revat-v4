@@ -40,6 +40,7 @@ class SummarizeAttribution implements ShouldQueue
 
         $this->summarizeAttributionDaily();
         $this->summarizeAttributionByEffort();
+        $this->summarizeAttributionByCampaign();
 
         Log::info("SummarizeAttribution: Completed for workspace [{$this->workspaceId}]");
     }
@@ -55,7 +56,7 @@ class SummarizeAttribution implements ShouldQueue
                 'attribution_results.workspace_id',
                 DB::raw('DATE(COALESCE(conversion_sales.converted_at, conversion_sales.created_at)) as summary_date'),
                 'attribution_results.model',
-                DB::raw('COUNT(*) as attributed_conversions'),
+                DB::raw('COUNT(DISTINCT attribution_results.conversion_id) as attributed_conversions'),
                 DB::raw('COALESCE(SUM(attribution_results.weight * COALESCE(conversion_sales.revenue, 0)), 0) as attributed_revenue'),
                 DB::raw('COALESCE(SUM(attribution_results.weight), 0) as total_weight'),
             )
@@ -97,7 +98,7 @@ class SummarizeAttribution implements ShouldQueue
                 'attribution_results.effort_id',
                 DB::raw('DATE(COALESCE(conversion_sales.converted_at, conversion_sales.created_at)) as summary_date'),
                 'attribution_results.model',
-                DB::raw('COUNT(*) as attributed_conversions'),
+                DB::raw('COUNT(DISTINCT attribution_results.conversion_id) as attributed_conversions'),
                 DB::raw('COALESCE(SUM(attribution_results.weight * COALESCE(conversion_sales.revenue, 0)), 0) as attributed_revenue'),
                 DB::raw('COALESCE(SUM(attribution_results.weight), 0) as total_weight'),
             )
@@ -124,6 +125,59 @@ class SummarizeAttribution implements ShouldQueue
                     'summarized_at' => now(),
                 ],
                 ['workspace_id', 'effort_id', 'summary_date', 'model'],
+                ['attributed_conversions', 'attributed_revenue', 'total_weight', 'summarized_at'],
+            );
+        }
+    }
+
+    protected function summarizeAttributionByCampaign(): void
+    {
+        $query = DB::table('attribution_results')
+            ->join('conversion_sales', function ($join) {
+                $join->on('attribution_results.conversion_id', '=', 'conversion_sales.id')
+                    ->where('attribution_results.conversion_type', '=', 'conversion_sale');
+            })
+            ->select(
+                'attribution_results.workspace_id',
+                'attribution_results.campaign_type',
+                'attribution_results.campaign_id',
+                DB::raw('DATE(COALESCE(conversion_sales.converted_at, conversion_sales.created_at)) as summary_date'),
+                'attribution_results.model',
+                DB::raw('COUNT(DISTINCT attribution_results.conversion_id) as attributed_conversions'),
+                DB::raw('COALESCE(SUM(attribution_results.weight * COALESCE(conversion_sales.revenue, 0)), 0) as attributed_revenue'),
+                DB::raw('COALESCE(SUM(attribution_results.weight), 0) as total_weight'),
+            )
+            ->where('attribution_results.workspace_id', $this->workspaceId)
+            ->where('attribution_results.campaign_type', '!=', '')
+            ->where('attribution_results.campaign_id', '!=', 0)
+            ->groupBy(
+                'attribution_results.workspace_id',
+                'attribution_results.campaign_type',
+                'attribution_results.campaign_id',
+                DB::raw('DATE(COALESCE(conversion_sales.converted_at, conversion_sales.created_at))'),
+                'attribution_results.model'
+            );
+
+        if ($this->since) {
+            $query->where('attribution_results.updated_at', '>=', $this->since);
+        }
+
+        $rows = $query->get();
+
+        foreach ($rows as $row) {
+            DB::table('summary_attribution_by_campaign')->upsert(
+                [
+                    'workspace_id' => $row->workspace_id,
+                    'campaign_type' => $row->campaign_type,
+                    'campaign_id' => $row->campaign_id,
+                    'summary_date' => $row->summary_date,
+                    'model' => $row->model,
+                    'attributed_conversions' => $row->attributed_conversions,
+                    'attributed_revenue' => $row->attributed_revenue,
+                    'total_weight' => $row->total_weight,
+                    'summarized_at' => now(),
+                ],
+                ['workspace_id', 'campaign_type', 'campaign_id', 'summary_date', 'model'],
                 ['attributed_conversions', 'attributed_revenue', 'total_weight', 'summarized_at'],
             );
         }
