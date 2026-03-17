@@ -12,7 +12,7 @@ use App\Models\Organization;
 use App\Models\Workspace;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Schema;
 
 beforeEach(function () {
@@ -294,18 +294,18 @@ it('upsert replaces existing summary rows on re-summarization', function () {
 // ── SummarizeAllWorkspaces ────────────────────────────────────────────
 
 it('dispatches summarization for workspaces with active integrations', function () {
-    Queue::fake();
+    Bus::fake([RunSummarization::class]);
 
     $job = new SummarizeAllWorkspaces;
     $job->handle();
 
-    Queue::assertPushed(RunSummarization::class, function ($job) {
+    Bus::assertDispatched(RunSummarization::class, function ($job) {
         return $job->workspaceId === $this->workspace->id;
     });
 });
 
 it('respects workspace limit configuration', function () {
-    Queue::fake();
+    Bus::fake([RunSummarization::class]);
     config(['summarization.workspace_limit' => 1]);
 
     // Create a second workspace with active integration
@@ -327,7 +327,7 @@ it('respects workspace limit configuration', function () {
     $job = new SummarizeAllWorkspaces;
     $job->handle();
 
-    Queue::assertPushed(RunSummarization::class, 1);
+    Bus::assertDispatched(RunSummarization::class, 1);
 });
 
 // ── RunSummarization: Unique ID ───────────────────────────────────────

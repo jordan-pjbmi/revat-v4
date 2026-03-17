@@ -13,7 +13,6 @@ use App\Models\Workspace;
 use App\Services\Transformation\CampaignEmailTransformer;
 use App\Services\Transformation\TransformerRegistry;
 use Illuminate\Support\Facades\Bus;
-use Illuminate\Support\Facades\Queue;
 
 beforeEach(function () {
     $this->org = Organization::create(['name' => 'Test Org']);
@@ -129,7 +128,7 @@ it('has exponential backoff retry configuration', function () {
 // ── TransformExtractionBatches: Dispatch Order ────────────────────────
 
 it('dispatches jobs in correct data type order', function () {
-    Queue::fake();
+    Bus::fake([TransformBatch::class]);
 
     // Create batches in reverse order
     $clickBatch = ExtractionBatch::create([
@@ -149,13 +148,13 @@ it('dispatches jobs in correct data type order', function () {
     $job = new TransformExtractionBatches;
     $job->handle();
 
-    Queue::assertPushed(TransformBatch::class, 2);
+    Bus::assertDispatched(TransformBatch::class, 2);
 });
 
 // ── TransformExtractionBatches: Batch Limit ───────────────────────────
 
 it('respects batch limit configuration', function () {
-    Queue::fake();
+    Bus::fake([TransformBatch::class]);
     config(['transformation.batch_limit' => 2]);
 
     for ($i = 1; $i <= 5; $i++) {
@@ -170,7 +169,7 @@ it('respects batch limit configuration', function () {
     $job = new TransformExtractionBatches;
     $job->handle();
 
-    Queue::assertPushed(TransformBatch::class, 2);
+    Bus::assertDispatched(TransformBatch::class, 2);
 });
 
 // ── TransformerRegistry: Correct Resolution ───────────────────────────
