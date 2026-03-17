@@ -46,26 +46,26 @@
         <flux:spacer />
 
         @auth
-        <flux:sidebar.profile>
-            <flux:dropdown position="top" align="start" data-testid="sidebar-user-menu">
-                <flux:button variant="ghost" class="w-full justify-start">
-                    <div class="flex items-center gap-2">
-                        <x-user-avatar :user="auth()->user()" size="size-6" />
-                        <span class="text-sm font-medium truncate">{{ auth()->user()->name }}</span>
-                    </div>
-                </flux:button>
+        <flux:dropdown position="top" align="start" data-testid="sidebar-user-menu">
+            <flux:sidebar.profile
+                name="{{ auth()->user()->name }}"
+                avatar="{{ null }}"
+            >
+                <x-slot:avatar>
+                    <x-user-avatar :user="auth()->user()" size="size-8" />
+                </x-slot:avatar>
+            </flux:sidebar.profile>
 
-                <flux:menu>
-                    <flux:menu.item icon="user-circle" href="{{ route('settings.profile') }}">Profile</flux:menu.item>
-                    <flux:menu.item icon="cog-6-tooth" href="{{ route('settings.profile') }}">Settings</flux:menu.item>
-                    <flux:separator />
-                    <form method="POST" action="{{ route('logout') }}">
-                        @csrf
-                        <flux:menu.item icon="arrow-right-start-on-rectangle" type="submit">Sign out</flux:menu.item>
-                    </form>
-                </flux:menu>
-            </flux:dropdown>
-        </flux:sidebar.profile>
+            <flux:menu>
+                <flux:menu.item icon="user-circle" href="{{ route('settings.profile') }}">Profile</flux:menu.item>
+                <flux:menu.item icon="cog-6-tooth" href="{{ route('settings.profile') }}">Settings</flux:menu.item>
+                <flux:separator />
+                <form method="POST" action="{{ route('logout') }}">
+                    @csrf
+                    <flux:menu.item icon="arrow-right-start-on-rectangle" type="submit">Sign out</flux:menu.item>
+                </form>
+            </flux:menu>
+        </flux:dropdown>
         @endauth
     </flux:sidebar>
 
