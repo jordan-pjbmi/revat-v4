@@ -211,7 +211,7 @@ new class extends Component
     public function suggestUrlParams(): void
     {
         $workspace = app(WorkspaceContext::class)->getWorkspace();
-        if (! $workspace) {
+        if (! $workspace || ! $this->campaignIntegrationId) {
             $this->urlParamSuggestions = [];
 
             return;
@@ -219,6 +219,7 @@ new class extends Component
 
         $this->urlParamSuggestions = DB::table('campaign_email_click_raw_data')
             ->where('workspace_id', $workspace->id)
+            ->where('integration_id', $this->campaignIntegrationId)
             ->whereNotNull('url_params')
             ->select(DB::raw("DISTINCT JSON_KEYS(url_params) as param_keys"))
             ->limit(500)
