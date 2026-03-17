@@ -57,6 +57,7 @@ class ConnectorKeyProcessor
         if ($campaignIntegration) {
             if ($connector->campaign_data_type === 'campaign_emails') {
                 $this->processCampaignRecords($connector, $campaignFields);
+                $this->processClicksFromParentCampaigns($connector);
             } elseif ($connector->campaign_data_type === 'campaign_email_clicks') {
                 $this->processCampaignClickRecords($connector, $campaignFields);
             }
@@ -132,6 +133,38 @@ class ConnectorKeyProcessor
             ->orderBy('ce.id')
             ->chunk(500, function ($rows) use ($connector, $fields) {
                 $this->processCompositeRawDataBatch($connector, $rows, 'campaign_email', count($fields));
+            });
+    }
+
+    /**
+     * Create ARKs for campaign_email_clicks by inheriting the key from their parent campaign_email.
+     */
+    protected function processClicksFromParentCampaigns(AttributionConnector $connector): void
+    {
+        DB::table('campaign_email_clicks as cec')
+            ->join('attribution_record_keys as ark', function ($join) use ($connector) {
+                $join->on('ark.record_id', '=', 'cec.campaign_email_id')
+                    ->where('ark.record_type', '=', 'campaign_email')
+                    ->where('ark.connector_id', '=', $connector->id);
+            })
+            ->where('cec.workspace_id', $connector->workspace_id)
+            ->whereNull('cec.deleted_at')
+            ->select(['cec.id as click_id', 'ark.attribution_key_id'])
+            ->orderBy('cec.id')
+            ->chunk(500, function ($rows) use ($connector) {
+                foreach ($rows as $row) {
+                    DB::table('attribution_record_keys')->updateOrInsert(
+                        [
+                            'connector_id' => $connector->id,
+                            'record_type' => 'campaign_email_click',
+                            'record_id' => $row->click_id,
+                        ],
+                        [
+                            'attribution_key_id' => $row->attribution_key_id,
+                            'workspace_id' => $connector->workspace_id,
+                        ]
+                    );
+                }
             });
     }
 
