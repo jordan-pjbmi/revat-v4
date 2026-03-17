@@ -3,6 +3,7 @@
 use App\Models\Organization;
 use App\Models\Plan;
 use App\Models\User;
+use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
@@ -48,6 +49,7 @@ it('allows owner to access billing actions', function () {
 
     // Owner should be able to reach billing routes (validation errors expected, not 403)
     $this->actingAs($owner)
+        ->withoutMiddleware(VerifyCsrfToken::class)
         ->post(route('billing.checkout'), [])
         ->assertSessionHasErrors(); // Validation errors, not 403
 });
@@ -59,6 +61,7 @@ it('blocks viewer from billing actions', function () {
     $viewer->assignRole('viewer');
 
     $this->actingAs($viewer)
+        ->withoutMiddleware(VerifyCsrfToken::class)
         ->post(route('billing.checkout'), ['plan_id' => $this->plan->id, 'billing_period' => 'monthly'])
         ->assertForbidden();
 });
@@ -70,6 +73,7 @@ it('blocks editor from billing actions', function () {
     $editor->assignRole('editor');
 
     $this->actingAs($editor)
+        ->withoutMiddleware(VerifyCsrfToken::class)
         ->post(route('billing.checkout'), ['plan_id' => $this->plan->id, 'billing_period' => 'monthly'])
         ->assertForbidden();
 });
@@ -81,11 +85,13 @@ it('blocks admin from billing actions', function () {
     $admin->assignRole('admin');
 
     $this->actingAs($admin)
+        ->withoutMiddleware(VerifyCsrfToken::class)
         ->post(route('billing.checkout'), ['plan_id' => $this->plan->id, 'billing_period' => 'monthly'])
         ->assertForbidden();
 });
 
 it('requires authentication for billing routes', function () {
-    $this->post(route('billing.checkout'))
+    $this->withoutMiddleware(VerifyCsrfToken::class)
+        ->post(route('billing.checkout'))
         ->assertRedirect(route('login'));
 });

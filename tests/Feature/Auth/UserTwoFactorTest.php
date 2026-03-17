@@ -4,6 +4,7 @@ use App\Models\Organization;
 use App\Models\User;
 use App\Services\TwoFactorService;
 use Database\Seeders\RolesAndPermissionsSeeder;
+use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Route;
 use PragmaRX\Google2FA\Google2FA;
@@ -158,6 +159,7 @@ it('clears 2fa_verified on logout', function () {
     $user = createUserWith2FA($this->service);
 
     $this->actingAs($user)
+        ->withoutMiddleware(VerifyCsrfToken::class)
         ->withSession(['2fa_verified' => true])
         ->post('/logout')
         ->assertRedirect('/');
