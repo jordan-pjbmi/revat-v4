@@ -1,6 +1,8 @@
 <?php
 
-use App\Jobs\Summarization\RunSummarization;
+use App\Jobs\Summarization\SummarizeAttribution;
+use App\Jobs\Summarization\SummarizeCampaigns;
+use App\Jobs\Summarization\SummarizeConversions;
 use App\Models\AttributionConnector;
 use App\Models\AttributionResult;
 use App\Models\CampaignEmail;
@@ -135,9 +137,11 @@ it('creates summary table records from fact data', function () {
         ]);
     }
 
-    // Run summarization
-    $job = new RunSummarization($this->workspace->id);
-    $job->handle();
+    // Run summarization sub-jobs directly (RunSummarization dispatches async batches
+    // which can't see the test transaction, so we call each job's handle() inline)
+    (new SummarizeCampaigns($this->workspace->id))->handle();
+    (new SummarizeConversions($this->workspace->id))->handle();
+    (new SummarizeAttribution($this->workspace->id))->handle();
 
     // Verify campaign daily summary
     $campaignSummary = DB::table('summary_campaign_daily')
