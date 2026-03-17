@@ -119,7 +119,14 @@ class Integration extends Model
         $platformConfig = config("integrations.platforms.{$this->platform}");
 
         if ($platformConfig) {
-            $requiredFields = $platformConfig['credential_fields'] ?? [];
+            $rawFields = $platformConfig['credential_fields'] ?? [];
+
+            // Support both flat string arrays and object arrays with 'key' property
+            $requiredFields = array_map(
+                fn ($field) => is_array($field) ? $field['key'] : $field,
+                $rawFields
+            );
+
             $providedFields = array_keys($credentials);
             $missing = array_diff($requiredFields, $providedFields);
 
