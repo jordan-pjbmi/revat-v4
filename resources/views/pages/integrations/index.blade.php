@@ -2,152 +2,23 @@
 
 use App\Jobs\Extraction\ExtractIntegration;
 use App\Models\Integration;
-use App\Services\Integrations\ConnectorRegistry;
+use App\Services\PlanEnforcement\IntegrationLimitService;
 use App\Services\WorkspaceContext;
 use Livewire\Volt\Component;
 
 new class extends Component
 {
-    public bool $showCreateModal = false;
-
-    public string $name = '';
-
-    public string $platform = '';
-
-    public array $credentials = [];
-
-    public array $selectedDataTypes = [];
-
-    public int $syncInterval = 60;
-
-    public ?array $connectionTestResult = null;
-
-    public function openCreateModal(): void
+    public function toggleStatus(int $integrationId): void
     {
-        $this->reset(['name', 'platform', 'credentials', 'selectedDataTypes', 'syncInterval', 'connectionTestResult']);
-        $this->syncInterval = 60;
-        $this->showCreateModal = true;
-    }
-
-    public function updatedPlatform(): void
-    {
-        $this->credentials = [];
-        $this->selectedDataTypes = [];
-        $this->connectionTestResult = null;
-
-        $platformConfig = config("integrations.platforms.{$this->platform}");
-        if ($platformConfig) {
-            $this->selectedDataTypes = $platformConfig['data_types'] ?? [];
-        }
-    }
-
-    public function getCredentialFieldsProperty(): array
-    {
-        if (! $this->platform) {
-            return [];
-        }
-
-        $platformConfig = config("integrations.platforms.{$this->platform}");
-
-        return $platformConfig['credential_fields'] ?? [];
-    }
-
-    public function getAvailableDataTypesProperty(): array
-    {
-        if (! $this->platform) {
-            return [];
-        }
-
-        $platformConfig = config("integrations.platforms.{$this->platform}");
-
-        return $platformConfig['data_types'] ?? [];
-    }
-
-    public function testConnection(): void
-    {
-        $this->connectionTestResult = null;
-
-        if (! $this->platform) {
-            $this->connectionTestResult = ['success' => false, 'message' => 'Please select a platform first.'];
-
-            return;
-        }
-
-        // Validate credential fields are filled
-        foreach ($this->credentialFields as $field) {
-            if (empty($this->credentials[$field] ?? '')) {
-                $this->connectionTestResult = ['success' => false, 'message' => 'Please fill in all credential fields.'];
-
-                return;
-            }
-        }
-
-        // Build a temporary (non-persisted) integration to resolve the connector
-        $tempIntegration = new Integration([
-            'platform' => $this->platform,
-        ]);
-        $tempIntegration->credentials = $this->credentials;
-
-        try {
-            $connector = app(ConnectorRegistry::class)->resolve($tempIntegration);
-            $result = $connector->testConnection();
-            $this->connectionTestResult = ['success' => $result->success, 'message' => $result->message];
-        } catch (\Throwable $e) {
-            $this->connectionTestResult = ['success' => false, 'message' => "Connection test error: {$e->getMessage()}"];
-        }
-    }
-
-    public function createIntegration(): void
-    {
-        $credentialRules = [];
-        foreach ($this->credentialFields as $field) {
-            $credentialRules["credentials.{$field}"] = ['required', 'string'];
-        }
-
-        $this->validate(array_merge([
-            'name' => ['required', 'string', 'max:255'],
-            'platform' => ['required', 'string', 'in:'.implode(',', array_keys(config('integrations.platforms', [])))],
-            'selectedDataTypes' => ['required', 'array', 'min:1'],
-            'syncInterval' => ['required', 'integer', 'min:1', 'max:1440'],
-        ], $credentialRules));
-
         $workspace = app(WorkspaceContext::class)->getWorkspace();
 
         if (! $workspace) {
-            $this->addError('name', 'No workspace selected.');
-
             return;
         }
 
-        $exists = Integration::where('workspace_id', $workspace->id)
-            ->where('platform', $this->platform)
-            ->where('name', $this->name)
-            ->exists();
-
-        if ($exists) {
-            $this->addError('name', "An integration named \"{$this->name}\" already exists for this platform.");
-
-            return;
-        }
-
-        $integration = new Integration([
-            'name' => $this->name,
-            'platform' => $this->platform,
-            'data_types' => $this->selectedDataTypes,
-            'is_active' => true,
-            'sync_interval_minutes' => $this->syncInterval,
-        ]);
-        $integration->workspace_id = $workspace->id;
-        $integration->organization_id = $workspace->organization_id;
+        $integration = Integration::forWorkspace($workspace->id)->findOrFail($integrationId);
+        $integration->is_active = ! $integration->is_active;
         $integration->save();
-
-        $integration->setCredentials($this->credentials);
-
-        $integration->markSyncStarted();
-        ExtractIntegration::dispatch($integration);
-
-        $this->showCreateModal = false;
-        $this->reset(['name', 'platform', 'credentials', 'selectedDataTypes', 'syncInterval', 'connectionTestResult']);
     }
 
     public function syncNow(int $integrationId): void
@@ -186,7 +57,7 @@ new class extends Component
         $workspace = app(WorkspaceContext::class)->getWorkspace();
 
         if (! $workspace) {
-            return ['integrations' => collect(), 'platforms' => [], 'hasSyncInProgress' => false];
+            return ['integrations' => collect(), 'platforms' => [], 'hasSyncInProgress' => false, 'atCapacity' => false, 'integrationLimit' => 0];
         }
 
         $integrations = Integration::forWorkspace($workspace->id)
@@ -194,13 +65,19 @@ new class extends Component
             ->get();
 
         $platforms = config('integrations.platforms', []);
-
         $hasSyncInProgress = $integrations->contains(fn ($i) => $i->sync_in_progress);
+
+        // Plan limit check
+        $limitService = app(IntegrationLimitService::class);
+        $limit = $limitService->maxAllowed($workspace->organization);
+        $atCapacity = ! $limitService->canAdd($workspace->organization, $workspace);
 
         return [
             'integrations' => $integrations,
             'platforms' => $platforms,
             'hasSyncInProgress' => $hasSyncInProgress,
+            'atCapacity' => $atCapacity,
+            'integrationLimit' => $limit,
         ];
     }
 }; ?>
@@ -215,10 +92,22 @@ new class extends Component
                 <h1 class="text-[22px] font-bold text-slate-900 dark:text-white">Integrations</h1>
                 <p class="text-[13px] text-slate-600 dark:text-slate-300 mt-0.5">Manage your data source connections</p>
             </div>
-            <flux:button variant="primary" icon="plus" wire:click="openCreateModal">
-                Add Integration
-            </flux:button>
+            <a href="{{ route('integrations.create') }}">
+                <flux:button variant="primary" icon="plus" :disabled="$atCapacity">
+                    Add Integration
+                </flux:button>
+            </a>
         </div>
+
+        {{-- Plan Limit Banner --}}
+        @if ($atCapacity)
+            <div class="mb-6 rounded-xl border border-amber-200 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-800 px-4 py-3">
+                <p class="text-sm text-amber-800 dark:text-amber-300">
+                    You've used all {{ $integrationLimit }} of your integration slots.
+                    <a href="{{ route('billing') }}" class="font-medium underline hover:no-underline">Upgrade your plan</a> to add more.
+                </p>
+            </div>
+        @endif
 
         {{-- Integrations Table --}}
         <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
@@ -258,19 +147,7 @@ new class extends Component
                                         @if ($integration->sync_in_progress)
                                             <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
                                                 <svg class="w-3 h-3 animate-spin" viewBox="0 0 24 24" fill="none"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
-                                                @switch($integration->last_sync_status)
-                                                    @case('extracting')
-                                                        Extracting data...
-                                                        @break
-                                                    @case('transforming')
-                                                        Processing data...
-                                                        @break
-                                                    @case('attributing')
-                                                        Running attribution...
-                                                        @break
-                                                    @default
-                                                        Syncing...
-                                                @endswitch
+                                                Syncing
                                             </span>
                                         @elseif ($integration->last_sync_status === 'completed')
                                             <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
@@ -288,21 +165,35 @@ new class extends Component
                                     </td>
                                     <td class="px-3 py-2.5 font-mono text-slate-500">{{ $integration->last_synced_at?->diffForHumans() ?? '-' }}</td>
                                     <td class="px-3 py-2.5 text-slate-600 dark:text-slate-300">
+                                        @php $dataTypeLabels = config('integrations.data_type_labels', []); @endphp
                                         @foreach ($integration->data_types ?? [] as $dataType)
-                                            <span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300 mr-1">{{ str_replace('_', ' ', $dataType) }}</span>
+                                            <span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300 mr-1">{{ $dataTypeLabels[$dataType] ?? str_replace('_', ' ', $dataType) }}</span>
                                         @endforeach
                                     </td>
                                     <td class="px-3 py-2.5">
                                         <div class="flex items-center gap-1">
+                                            <a href="{{ route('integrations.edit', $integration) }}">
+                                                <flux:button size="xs" variant="ghost" icon="pencil-square">
+                                                    Edit
+                                                </flux:button>
+                                            </a>
                                             <flux:button
                                                 size="xs"
                                                 variant="ghost"
                                                 icon="arrow-path"
                                                 wire:click="syncNow({{ $integration->id }})"
-                                                :disabled="$integration->sync_in_progress && ! $integration->isSyncStale()"
+                                                :disabled="$integration->sync_in_progress"
                                                 title="Sync Now"
                                             >
-                                                {{ $integration->isSyncStale() ? 'Retry Sync' : 'Sync Now' }}
+                                                Sync
+                                            </flux:button>
+                                            <flux:button
+                                                size="xs"
+                                                variant="ghost"
+                                                wire:click="toggleStatus({{ $integration->id }})"
+                                                title="{{ $integration->is_active ? 'Pause' : 'Resume' }}"
+                                            >
+                                                {{ $integration->is_active ? 'Pause' : 'Resume' }}
                                             </flux:button>
                                             <flux:button
                                                 size="xs"
@@ -321,86 +212,13 @@ new class extends Component
                     </table>
                 @else
                     <div class="text-center py-16">
-                        <flux:icon name="puzzle-piece" class="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
+                        <svg class="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M14.25 6.087c0-.355.186-.676.401-.959.221-.29.349-.634.349-1.003 0-1.036-1.007-1.875-2.25-1.875s-2.25.84-2.25 1.875c0 .369.128.713.349 1.003.215.283.401.604.401.959v0a.64.64 0 0 1-.657.643 48.39 48.39 0 0 1-4.163-.3c.186 1.613.293 3.25.315 4.907a.656.656 0 0 1-.658.663v0c-.355 0-.676-.186-.959-.401a1.647 1.647 0 0 0-1.003-.349c-1.036 0-1.875 1.007-1.875 2.25s.84 2.25 1.875 2.25c.369 0 .713-.128 1.003-.349.283-.215.604-.401.959-.401v0c.31 0 .555.26.532.57a48.039 48.039 0 0 1-.642 5.056c1.518.19 3.058.309 4.616.354a.64.64 0 0 0 .657-.643v0c0-.355-.186-.676-.401-.959a1.647 1.647 0 0 1-.349-1.003c0-1.035 1.008-1.875 2.25-1.875 1.243 0 2.25.84 2.25 1.875 0 .369-.128.713-.349 1.003-.215.283-.4.604-.4.959v0c0 .333.277.599.61.58a48.1 48.1 0 0 0 5.427-.63 48.05 48.05 0 0 0 .582-4.717.532.532 0 0 0-.533-.57v0c-.355 0-.676.186-.959.401-.29.221-.634.349-1.003.349-1.035 0-1.875-1.007-1.875-2.25s.84-2.25 1.875-2.25c.37 0 .713.128 1.003.349.283.215.604.401.96.401v0a.656.656 0 0 0 .658-.663 48.422 48.422 0 0 0-.37-5.36c-1.886.342-3.81.574-5.766.689a.578.578 0 0 1-.61-.58v0Z" /></svg>
                         <p class="text-sm font-medium text-slate-500 dark:text-slate-400">No integrations configured</p>
                         <p class="text-xs text-slate-400 dark:text-slate-500 mt-1">Connect a data source to start syncing your marketing data</p>
                     </div>
                 @endif
             </div>
         </div>
-
-        {{-- Create Integration Modal --}}
-        <flux:modal wire:model.self="showCreateModal" class="max-w-lg">
-            <div class="space-y-6">
-                <flux:heading>Add Integration</flux:heading>
-
-                <form wire:submit="createIntegration" class="space-y-4">
-                    <flux:select wire:model.live="platform" label="Platform" placeholder="Select a platform...">
-                        @foreach ($platforms as $key => $config)
-                            <flux:select.option value="{{ $key }}">{{ $config['label'] }}</flux:select.option>
-                        @endforeach
-                    </flux:select>
-
-                    <flux:input wire:model="name" label="Integration Name" type="text" placeholder="e.g. My ActiveCampaign" required />
-
-                    @if ($this->credentialFields)
-                        <div class="space-y-3">
-                            <p class="text-sm font-medium text-slate-700 dark:text-slate-300">Credentials</p>
-                            @foreach ($this->credentialFields as $field)
-                                <flux:input
-                                    wire:model="credentials.{{ $field }}"
-                                    label="{{ str_replace('_', ' ', ucwords($field, '_')) }}"
-                                    type="{{ str_contains($field, 'key') || str_contains($field, 'secret') || str_contains($field, 'token') ? 'password' : 'text' }}"
-                                    placeholder="Enter {{ str_replace('_', ' ', $field) }}"
-                                    required
-                                />
-                            @endforeach
-                        </div>
-                    @endif
-
-                    @if ($this->availableDataTypes)
-                        <div class="space-y-2">
-                            <p class="text-sm font-medium text-slate-700 dark:text-slate-300">Data Types</p>
-                            @foreach ($this->availableDataTypes as $dataType)
-                                <flux:checkbox
-                                    wire:model="selectedDataTypes"
-                                    value="{{ $dataType }}"
-                                    label="{{ ucwords(str_replace('_', ' ', $dataType)) }}"
-                                />
-                            @endforeach
-                        </div>
-                    @endif
-
-                    <flux:input
-                        wire:model="syncInterval"
-                        label="Sync Interval (minutes)"
-                        type="number"
-                        min="1"
-                        max="1440"
-                    />
-
-                    @if ($this->credentialFields)
-                        <div class="flex items-center gap-3">
-                            <flux:button type="button" variant="ghost" wire:click="testConnection" wire:loading.attr="disabled" wire:target="testConnection">
-                                <span wire:loading.remove wire:target="testConnection">Test Connection</span>
-                                <span wire:loading wire:target="testConnection">Testing...</span>
-                            </flux:button>
-
-                            @if ($connectionTestResult)
-                                <p class="text-sm {{ $connectionTestResult['success'] ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400' }}">
-                                    {{ $connectionTestResult['message'] }}
-                                </p>
-                            @endif
-                        </div>
-                    @endif
-
-                    <div class="flex justify-end gap-2 pt-2">
-                        <flux:button wire:click="$set('showCreateModal', false)" variant="ghost">Cancel</flux:button>
-                        <flux:button type="submit" variant="primary" :disabled="$this->credentialFields && (! $connectionTestResult || ! $connectionTestResult['success'])">Create Integration</flux:button>
-                    </div>
-                </form>
-            </div>
-        </flux:modal>
     </div>
     @endvolt
 </x-layouts.app>

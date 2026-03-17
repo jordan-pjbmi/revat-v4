@@ -91,27 +91,31 @@ it('requires authentication', function () {
         ->assertRedirect(route('login'));
 });
 
-it('shows add integration button', function () {
+it('shows add integration link', function () {
     $this->actingAs($this->user)
         ->get(route('integrations'))
         ->assertOk()
         ->assertSee('Add Integration');
 });
 
-it('can create an integration via the modal', function () {
+it('can create an integration via the wizard', function () {
     $this->actingAs($this->user);
     app(WorkspaceContext::class)->setWorkspace($this->workspace);
 
-    Volt::test('integrations.index')
-        ->call('openCreateModal')
-        ->assertSet('showCreateModal', true)
-        ->set('platform', 'activecampaign')
+    Volt::test('integrations.create')
+        ->call('selectPlatform', 'activecampaign')
+        ->assertSet('step', 2)
         ->set('name', 'Test AC Integration')
         ->set('credentials.api_url', 'https://test.api-us1.com')
         ->set('credentials.api_key', 'test-key-123')
+        ->call('continueFromCredentials')
+        ->assertSet('step', 3)
+        ->set('connectionTestResult', ['success' => true, 'message' => 'OK', 'accountName' => 'test'])
+        ->call('continueFromTest')
+        ->assertSet('step', 4)
         ->set('selectedDataTypes', ['campaign_emails'])
-        ->set('syncInterval', 120)
-        ->call('createIntegration')
+        ->set('syncInterval', 60)
+        ->call('saveIntegration')
         ->assertHasNoErrors();
 
     $this->assertDatabaseHas('integrations', [
@@ -119,7 +123,7 @@ it('can create an integration via the modal', function () {
         'platform' => 'activecampaign',
         'workspace_id' => $this->workspace->id,
         'organization_id' => $this->org->id,
-        'sync_interval_minutes' => 120,
+        'sync_interval_minutes' => 60,
         'is_active' => true,
     ]);
 });
@@ -128,66 +132,61 @@ it('validates required fields when creating integration', function () {
     $this->actingAs($this->user);
     app(WorkspaceContext::class)->setWorkspace($this->workspace);
 
-    Volt::test('integrations.index')
-        ->call('openCreateModal')
-        ->set('platform', '')
+    Volt::test('integrations.create')
+        ->call('selectPlatform', 'activecampaign')
         ->set('name', '')
-        ->call('createIntegration')
-        ->assertHasErrors(['name', 'platform']);
+        ->call('continueFromCredentials')
+        ->assertHasErrors(['name']);
 });
 
 it('validates credential fields for selected platform', function () {
     $this->actingAs($this->user);
     app(WorkspaceContext::class)->setWorkspace($this->workspace);
 
-    Volt::test('integrations.index')
-        ->call('openCreateModal')
-        ->set('platform', 'activecampaign')
+    Volt::test('integrations.create')
+        ->call('selectPlatform', 'activecampaign')
         ->set('name', 'Test Integration')
-        ->set('selectedDataTypes', ['campaign_emails'])
-        ->call('createIntegration')
+        ->call('continueFromCredentials')
         ->assertHasErrors(['credentials.api_url', 'credentials.api_key']);
 });
 
-it('requires at least one data type', function () {
+it('requires at least one data type on save', function () {
     $this->actingAs($this->user);
     app(WorkspaceContext::class)->setWorkspace($this->workspace);
 
-    Volt::test('integrations.index')
-        ->call('openCreateModal')
-        ->set('platform', 'activecampaign')
+    Volt::test('integrations.create')
+        ->call('selectPlatform', 'activecampaign')
         ->set('name', 'Test Integration')
         ->set('credentials.api_url', 'https://test.api-us1.com')
         ->set('credentials.api_key', 'test-key-123')
+        ->call('continueFromCredentials')
+        ->set('connectionTestResult', ['success' => true, 'message' => 'OK', 'accountName' => 'test'])
+        ->call('continueFromTest')
         ->set('selectedDataTypes', [])
-        ->call('createIntegration')
+        ->call('saveIntegration')
         ->assertHasErrors(['selectedDataTypes']);
 });
 
-it('resets form fields when opening create modal', function () {
+it('selects platform and loads defaults', function () {
     $this->actingAs($this->user);
     app(WorkspaceContext::class)->setWorkspace($this->workspace);
 
-    Volt::test('integrations.index')
-        ->set('name', 'leftover name')
-        ->set('platform', 'voluum')
-        ->call('openCreateModal')
-        ->assertSet('name', '')
-        ->assertSet('platform', '')
-        ->assertSet('credentials', [])
-        ->assertSet('selectedDataTypes', [])
-        ->assertSet('syncInterval', 60);
+    $component = Volt::test('integrations.create')
+        ->call('selectPlatform', 'voluum');
+
+    expect($component->get('platform'))->toBe('voluum');
+    expect($component->get('selectedDataTypes'))->toBe(['conversion_sales']);
+    expect($component->get('step'))->toBe(2);
 });
 
-it('updates available data types when platform changes', function () {
+it('cannot skip ahead past untouched steps', function () {
     $this->actingAs($this->user);
     app(WorkspaceContext::class)->setWorkspace($this->workspace);
 
-    $component = Volt::test('integrations.index')
-        ->call('openCreateModal')
-        ->set('platform', 'voluum');
-
-    expect($component->get('selectedDataTypes'))->toBe(['conversion_sales']);
+    Volt::test('integrations.create')
+        ->assertSet('step', 1)
+        ->call('goToStep', 3)
+        ->assertSet('step', 1);
 });
 
 it('enforces integrate permission', function () {

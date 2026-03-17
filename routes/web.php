@@ -92,6 +92,18 @@ Route::middleware(['auth', 'verified', 'onboarded', 'organization', 'workspace']
         ->name('integrations')
         ->middleware('can:integrate');
 
+    Route::get('/integrations/create', fn () => view('pages.integrations.create'))
+        ->name('integrations.create')
+        ->middleware('can:integrate');
+
+    Route::get('/integrations/{integration}/edit', fn () => view('pages.integrations.edit'))
+        ->name('integrations.edit')
+        ->middleware('can:integrate');
+
+    Route::get('/integrations/{integration}/mapping', fn () => view('pages.integrations.mapping'))
+        ->name('integrations.mapping')
+        ->middleware('can:integrate');
+
     Route::redirect('/conversion-sales', '/conversions/sales', 301);
 });
 
