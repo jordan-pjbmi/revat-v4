@@ -117,6 +117,10 @@ Route::middleware('guest')->group(function () {
         ->name('register')
         ->middleware('throttle:3,1');
 
+    Route::get('/waitlist/verify', fn () => view('pages.waitlist-verify'))
+        ->name('waitlist.verify')
+        ->middleware('throttle:10,1');
+
     Route::get('/forgot-password', fn () => view('pages.auth.forgot-password'))
         ->name('password.request')
         ->middleware('throttle:3,1');
@@ -206,6 +210,9 @@ Route::middleware(['auth', 'verified', 'onboarded', 'organization', 'throttle:30
 });
 
 // ── Invitation Routes ───────────────────────────────────────────────────
+Route::get('/alpha-agreement', fn () => view('pages.alpha-agreement'))
+    ->name('alpha.agreement');
+
 Route::get('/invitations/{token}', fn (string $token) => view('pages.auth.accept-invitation', ['token' => $token]))
     ->name('invitations.accept')
     ->middleware('throttle:10,1');
