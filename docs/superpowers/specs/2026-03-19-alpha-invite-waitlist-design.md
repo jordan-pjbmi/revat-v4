@@ -28,6 +28,20 @@ Gate registration behind invite-only access for the alpha release. Users without
 | verified_at | timestamp, nullable | Set when email confirmed |
 | timestamps | created_at, updated_at | |
 
+### `alpha_agreements`
+
+| Column | Type | Notes |
+|--------|------|-------|
+| id | bigint PK | |
+| email | varchar(254) | Email of the person who agreed (matches alpha_invite email) |
+| agreement_version | varchar(20) | Version string, e.g. "1.0" |
+| accepted_at | timestamp | When the user checked the box |
+| ip_address | varchar(45) | IPv4 or IPv6 address at time of acceptance |
+| user_agent | text | Browser user-agent string for audit trail |
+| timestamps | created_at, updated_at | |
+
+Index on `(email, agreement_version)` — unique pair, one acceptance per version per email.
+
 ## Registration Route Behavior
 
 The `/register` Volt component checks for a `token` query parameter:
@@ -44,10 +58,12 @@ Token validation: hash the provided plaintext token with SHA-256, look up in `al
 2. `AlphaInvite` model created: generate 64-char random token via `Str::random(64)`, store `hash('sha256', $token)` in `token_hash`, set `last_sent_at` to now.
 3. Send `AlphaInviteMail` to the email with link: `/register?token={plaintext}`.
 4. User clicks link → registration form renders with email pre-filled from the invite record, email field is read-only.
-5. On registration submit: validate token again, then:
+5. Below the password fields, a clickwrap agreement: unchecked checkbox + "I agree to the [Alpha Testing Agreement](/alpha-agreement)" link. The checkbox must be checked to submit.
+6. On registration submit: validate token again, then:
+   - Record agreement acceptance in `alpha_agreements` (email, version, timestamp, IP, user-agent) — this happens before user creation so the audit record exists regardless of what follows.
    - If a User with that email already exists: mark invite as `registered_at = now`, redirect to `/login` with flash message "You already have an account. Please log in."
    - Otherwise: create user, set `registered_at` on the `AlphaInvite`, dispatch `Registered` event (triggers email verification), log user in, redirect to dashboard.
-6. Normal onboarding flow continues (create organization, etc.).
+7. Normal onboarding flow continues (create organization, etc.).
 
 ### Resend
 
@@ -77,11 +93,12 @@ Admin can trigger "Revoke" action on a pending invite. This sets `revoked_at` �
 
 ### AlphaInviteResource
 
-- **Table columns:** email, last_sent_at, status badge (pending/registered/revoked), registered_at, created_at.
+- **Table columns:** email, last_sent_at, status badge (pending/registered/revoked), agreement badge (signed/unsigned), registered_at, created_at.
 - **Create form:** email field (single field).
 - **Actions:** resend invite (pending only), revoke invite (pending only).
 - **Filters:** status (pending vs. registered vs. revoked).
 - **Search:** by email.
+- **Relationship:** agreement status derived from `alpha_agreements` table (joined on email + current version).
 
 ### WaitlistEntryResource (view-only)
 
@@ -98,9 +115,28 @@ Admin can trigger "Revoke" action on a pending invite. This sets `revoked_at` �
 | `WaitlistVerificationMail` | User submits waitlist form | "Confirm your email" + verification link |
 | `WaitlistConfirmedMail` | User verifies waitlist email | "You're on the waitlist, we'll be in touch" |
 
+## Alpha Agreement
+
+### Approach: Clickwrap with audit trail
+
+Compliant with eIDAS (EU electronic signature regulation) as a "simple electronic signature" and French civil code (Articles 1366-1367). Sufficient for alpha/beta testing agreements.
+
+### Requirements
+
+- **Unchecked by default** — GDPR requires affirmative action, no pre-ticked boxes.
+- **Terms visible before acceptance** — link to full agreement text opens in new tab.
+- **Audit record** — email, agreement version, timestamp, IP address, user-agent stored in `alpha_agreements`.
+- **Agreement recorded before user creation** — ensures the audit trail exists even if subsequent steps fail.
+- **Versioned** — agreement version stored as a config value (e.g., `config('alpha.agreement_version')`). When the agreement text changes, bump the version. Existing users are not re-prompted (alpha is short-lived).
+
+### Agreement content
+
+The agreement text itself lives at a public route `GET /alpha-agreement` — a simple Blade page rendering the terms. The admin manages the content by updating the Blade view. No CMS needed for alpha.
+
 ## Routes
 
 - `GET /waitlist/verify` — public route (guest middleware), no auth required. Handles waitlist email verification.
+- `GET /alpha-agreement` — public route, no auth required. Renders the alpha testing agreement text.
 - The `/register` route retains its existing middleware (`guest`).
 
 ## Rate Limiting
@@ -121,22 +157,25 @@ Admin can trigger "Revoke" action on a pending invite. This sets `revoked_at` �
 ## New Files
 
 - `app/Models/AlphaInvite.php`
+- `app/Models/AlphaAgreement.php`
 - `app/Models/WaitlistEntry.php`
 - `database/migrations/xxxx_create_alpha_invites_table.php`
+- `database/migrations/xxxx_create_alpha_agreements_table.php`
 - `database/migrations/xxxx_create_waitlist_entries_table.php`
 - `app/Filament/Resources/AlphaInviteResource.php` (+ List/Create pages)
 - `app/Filament/Resources/WaitlistEntryResource.php` (+ List page)
 - `app/Mail/AlphaInviteMail.php` + blade view
 - `app/Mail/WaitlistVerificationMail.php` + blade view
 - `app/Mail/WaitlistConfirmedMail.php` + blade view
-- Modify: `resources/views/pages/auth/register.blade.php` (add token check + waitlist form)
-- New route: `GET /waitlist/verify` (verification endpoint)
+- `resources/views/pages/alpha-agreement.blade.php` (agreement text page)
+- Modify: `resources/views/pages/auth/register.blade.php` (add token check + waitlist form + agreement checkbox)
+- New routes: `GET /waitlist/verify`, `GET /alpha-agreement`
 
 ## Removal Plan
 
 When opening registration to the public:
 
-1. Remove token check and waitlist form from the registration Volt component (restore original registration form).
-2. Remove the `GET /waitlist/verify` route.
-3. Optionally drop `alpha_invites` and `waitlist_entries` tables and remove Filament resources.
+1. Remove token check, waitlist form, and agreement checkbox from the registration Volt component (restore original registration form).
+2. Remove the `GET /waitlist/verify` and `GET /alpha-agreement` routes.
+3. Keep `alpha_agreements` table as a permanent audit record. Optionally drop `alpha_invites` and `waitlist_entries` tables and remove Filament resources.
 4. No changes to User model, organization invitations, or any core system.
