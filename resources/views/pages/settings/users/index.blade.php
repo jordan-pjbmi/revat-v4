@@ -2,6 +2,7 @@
 
 use App\Models\Invitation;
 use App\Models\User;
+use App\Models\Workspace;
 use App\Services\AuditService;
 use App\Services\InvitationService;
 use Livewire\Volt\Component;
@@ -176,6 +177,90 @@ new class extends Component
         $this->confirmingRoleChangeFor = null;
         $this->newRole = '';
     }
+
+    public ?int $managingWorkspacesFor = null;
+    public string $workspaceSearch = '';
+    public ?int $confirmingLastWorkspaceRemoval = null;
+    public ?int $lastWorkspaceRemovalWorkspaceId = null;
+
+    public function showWorkspaceManager(int $userId): void
+    {
+        $this->managingWorkspacesFor = $userId;
+        $this->workspaceSearch = '';
+    }
+
+    public function getWorkspaceAssignments(int $userId): array
+    {
+        $org = auth()->user()->currentOrganization;
+        $user = User::findOrFail($userId);
+        $workspaces = $org->workspaces()->orderBy('name')->get();
+        $assignedIds = $user->workspaces()
+            ->where('workspaces.organization_id', $org->id)
+            ->pluck('workspaces.id')
+            ->toArray();
+
+        app(PermissionRegistrar::class)->setPermissionsTeamId($org->id);
+        $user->unsetRelation('roles');
+        $isImplicit = $user->hasRole(['owner', 'admin']);
+
+        return [
+            'workspaces' => $workspaces->map(fn ($ws) => [
+                'id' => $ws->id,
+                'name' => $ws->name,
+                'assigned' => $isImplicit || in_array($ws->id, $assignedIds),
+                'implicit' => $isImplicit,
+            ])->toArray(),
+            'isImplicit' => $isImplicit,
+        ];
+    }
+
+    public function toggleWorkspaceAssignment(int $userId, int $workspaceId): void
+    {
+        $org = auth()->user()->currentOrganization;
+        $user = User::findOrFail($userId);
+        $workspace = $org->workspaces()->findOrFail($workspaceId);
+
+        app(PermissionRegistrar::class)->setPermissionsTeamId($org->id);
+        $user->unsetRelation('roles');
+        if ($user->hasRole(['owner', 'admin'])) {
+            return;
+        }
+
+        $isAssigned = $workspace->users()->where('users.id', $userId)->exists();
+
+        if ($isAssigned) {
+            $assignedCount = $user->workspaces()
+                ->where('workspaces.organization_id', $org->id)
+                ->count();
+
+            if ($assignedCount <= 1) {
+                $this->confirmingLastWorkspaceRemoval = $userId;
+                $this->lastWorkspaceRemovalWorkspaceId = $workspaceId;
+                return;
+            }
+
+            $workspace->users()->detach($userId);
+            $this->dispatch('notify', message: "Removed from {$workspace->name}");
+        } else {
+            $workspace->users()->attach($userId);
+            $this->dispatch('notify', message: "Added to {$workspace->name}");
+        }
+    }
+
+    public function confirmLastWorkspaceRemoval(): void
+    {
+        if (! $this->confirmingLastWorkspaceRemoval || ! $this->lastWorkspaceRemovalWorkspaceId) {
+            return;
+        }
+
+        $org = auth()->user()->currentOrganization;
+        $workspace = $org->workspaces()->findOrFail($this->lastWorkspaceRemovalWorkspaceId);
+        $workspace->users()->detach($this->confirmingLastWorkspaceRemoval);
+
+        $this->dispatch('notify', message: "Removed from {$workspace->name}");
+        $this->confirmingLastWorkspaceRemoval = null;
+        $this->lastWorkspaceRemovalWorkspaceId = null;
+    }
 }; ?>
 
 <x-layouts.app>
@@ -253,6 +338,9 @@ new class extends Component
                                                     @endforeach
                                                     <flux:menu.separator />
                                                 @endif
+                                                <flux:menu.item wire:click="showWorkspaceManager({{ $member->id }})">
+                                                    Manage Workspaces
+                                                </flux:menu.item>
                                                 <flux:menu.item variant="danger" wire:click="confirmRemoval({{ $member->id }})">
                                                     Remove from organization
                                                 </flux:menu.item>
@@ -325,6 +413,58 @@ new class extends Component
                     @endforeach
                 </div>
             @endif
+
+            {{-- Workspace Assignment Modal --}}
+            <flux:modal wire:model.self="managingWorkspacesFor" class="max-w-sm">
+                @if ($managingWorkspacesFor)
+                    @php $assignments = $this->getWorkspaceAssignments($managingWorkspacesFor); @endphp
+                    <div class="space-y-4">
+                        <flux:heading>Manage Workspaces</flux:heading>
+
+                        @if ($assignments['isImplicit'])
+                            <p class="text-sm text-zinc-400">Has access to all workspaces via organization role</p>
+                        @endif
+
+                        <div class="mb-3">
+                            <input type="text" wire:model.live.debounce.300ms="workspaceSearch" placeholder="Search workspaces..."
+                                class="w-full text-sm bg-transparent border border-zinc-200 dark:border-zinc-600 rounded-md px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500 text-zinc-900 dark:text-white placeholder-zinc-400" />
+                        </div>
+
+                        <div class="max-h-64 overflow-y-auto">
+                            @foreach ($assignments['workspaces'] as $ws)
+                                @if (! $workspaceSearch || str_contains(strtolower($ws['name']), strtolower($workspaceSearch)))
+                                    <label class="flex items-center gap-3 px-2 py-2 hover:bg-zinc-50 dark:hover:bg-zinc-700 rounded cursor-pointer">
+                                        <input type="checkbox"
+                                            {{ $ws['assigned'] ? 'checked' : '' }}
+                                            {{ $ws['implicit'] ? 'disabled' : '' }}
+                                            wire:click="toggleWorkspaceAssignment({{ $managingWorkspacesFor }}, {{ $ws['id'] }})"
+                                            class="rounded border-zinc-300 dark:border-zinc-600 text-blue-600 {{ $ws['implicit'] ? 'opacity-50' : '' }}">
+                                        <span class="text-sm text-zinc-900 dark:text-white">{{ $ws['name'] }}</span>
+                                    </label>
+                                @endif
+                            @endforeach
+                        </div>
+
+                        <div class="flex justify-end">
+                            <flux:button wire:click="$set('managingWorkspacesFor', null)" variant="ghost" size="sm">Close</flux:button>
+                        </div>
+                    </div>
+                @endif
+            </flux:modal>
+
+            {{-- Last Workspace Removal Warning --}}
+            <flux:modal wire:model.self="confirmingLastWorkspaceRemoval" class="max-w-sm">
+                <div class="space-y-4">
+                    <flux:heading>Remove Last Workspace</flux:heading>
+                    <p class="text-sm text-zinc-500 dark:text-zinc-400">
+                        This user will lose access to all workspaces. They'll be prompted to select a workspace on next login.
+                    </p>
+                    <div class="flex justify-end gap-2">
+                        <flux:button wire:click="$set('confirmingLastWorkspaceRemoval', null)" variant="ghost">Cancel</flux:button>
+                        <flux:button wire:click="confirmLastWorkspaceRemoval" variant="danger">Remove</flux:button>
+                    </div>
+                </div>
+            </flux:modal>
         </div>
         @endvolt
     </div>
