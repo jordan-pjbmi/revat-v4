@@ -192,7 +192,7 @@ new class extends Component
     public function getWorkspaceAssignments(int $userId): array
     {
         $org = auth()->user()->currentOrganization;
-        $user = User::findOrFail($userId);
+        $user = $org->users()->findOrFail($userId);
         $workspaces = $org->workspaces()->orderBy('name')->get();
         $assignedIds = $user->workspaces()
             ->where('workspaces.organization_id', $org->id)
@@ -217,7 +217,7 @@ new class extends Component
     public function toggleWorkspaceAssignment(int $userId, int $workspaceId): void
     {
         $org = auth()->user()->currentOrganization;
-        $user = User::findOrFail($userId);
+        $user = $org->users()->findOrFail($userId);
         $workspace = $org->workspaces()->findOrFail($workspaceId);
 
         app(PermissionRegistrar::class)->setPermissionsTeamId($org->id);

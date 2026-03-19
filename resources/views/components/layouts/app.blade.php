@@ -151,7 +151,7 @@
                     @if ($pinnedWorkspaces->isNotEmpty())
                         <flux:menu.heading>Pinned</flux:menu.heading>
                         @foreach ($pinnedWorkspaces as $ws)
-                            <div x-show="!search || '{{ strtolower($ws->name) }}'.includes(search.toLowerCase())" class="flex items-center">
+                            <div x-show="!search || {{ Js::from(strtolower($ws->name)) }}.includes(search.toLowerCase())" class="flex items-center">
                                 <form method="POST" action="{{ route('switch-workspace', $ws) }}" class="flex-1">
                                     @csrf
                                     <flux:menu.item type="submit" class="flex items-center justify-between">
@@ -169,7 +169,7 @@
                     @if ($recentWorkspaces->isNotEmpty())
                         <flux:menu.heading>Recent</flux:menu.heading>
                         @foreach ($recentWorkspaces as $ws)
-                            <div x-show="!search || '{{ strtolower($ws->name) }}'.includes(search.toLowerCase())">
+                            <div x-show="!search || {{ Js::from(strtolower($ws->name)) }}.includes(search.toLowerCase())">
                                 <form method="POST" action="{{ route('switch-workspace', $ws) }}">
                                     @csrf
                                     <flux:menu.item type="submit">{{ $ws->name }}</flux:menu.item>
@@ -181,7 +181,7 @@
 
                     <flux:menu.heading>All Workspaces</flux:menu.heading>
                     @foreach ($allWorkspaces as $ws)
-                        <div x-show="!search || '{{ strtolower($ws->name) }}'.includes(search.toLowerCase())" class="group flex items-center">
+                        <div x-show="!search || {{ Js::from(strtolower($ws->name)) }}.includes(search.toLowerCase())" class="group flex items-center">
                             <form method="POST" action="{{ route('switch-workspace', $ws) }}" class="flex-1">
                                 @csrf
                                 <flux:menu.item type="submit" class="flex items-center justify-between">
