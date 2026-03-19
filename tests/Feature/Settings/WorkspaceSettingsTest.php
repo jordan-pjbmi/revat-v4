@@ -149,6 +149,13 @@ it('prevents adding user from different org to workspace', function () {
     expect($this->workspace->users()->where('users.id', $outsider->id)->exists())->toBeFalse();
 });
 
+it('renders workspace name as link to users page', function () {
+    $this->actingAs($this->owner)
+        ->get(route('settings.workspaces'))
+        ->assertOk()
+        ->assertSee(route('settings.workspaces.users', $this->workspace), false);
+});
+
 it('denies non-admin users access to workspace settings', function () {
     $viewer = User::factory()->create(['email_verified_at' => now()]);
     $viewer->organizations()->attach($this->org->id);

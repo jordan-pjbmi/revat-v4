@@ -181,11 +181,15 @@ new class extends Component
                                             <flux:button wire:click="$set('editingWorkspaceId', null)" variant="ghost" size="xs">Cancel</flux:button>
                                         </form>
                                     @else
-                                        <span class="text-sm font-medium text-zinc-900 dark:text-white">{{ $workspace->name }}</span>
+                                        <a href="{{ route('settings.workspaces.users', $workspace) }}" class="text-sm font-medium text-zinc-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400">
+                                            {{ $workspace->name }}
+                                        </a>
                                     @endif
                                 </flux:table.cell>
                                 <flux:table.cell>
-                                    <span class="text-sm text-zinc-500 dark:text-zinc-400">{{ $workspace->users_count }}</span>
+                                    <a href="{{ route('settings.workspaces.users', $workspace) }}" class="text-sm text-zinc-500 dark:text-zinc-400 hover:text-blue-600 dark:hover:text-blue-400">
+                                        {{ $workspace->totalMemberCount() }}
+                                    </a>
                                 </flux:table.cell>
                                 <flux:table.cell>
                                     @if ($workspace->is_default)
