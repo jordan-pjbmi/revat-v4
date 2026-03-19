@@ -185,6 +185,17 @@ class WorkspaceContext
             return $this->accessibleCache[$cacheKey];
         }
 
+        // Owner/admin get implicit access to all org workspaces
+        app(\Spatie\Permission\PermissionRegistrar::class)->setPermissionsTeamId($organization->id);
+        $user->unsetRelation('roles');
+
+        if ($user->hasRole(['owner', 'admin'])) {
+            $ids = $organization->workspaces()->pluck('id');
+            $this->accessibleCache[$cacheKey] = $ids;
+
+            return $ids;
+        }
+
         $ids = $user->workspaces()
             ->where('workspaces.organization_id', $organization->id)
             ->pluck('workspaces.id');

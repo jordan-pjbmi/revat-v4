@@ -48,6 +48,29 @@ class Workspace extends Model
         return $query->where('organization_id', $org instanceof Organization ? $org->id : $org);
     }
 
+    /**
+     * Count all users with access to this workspace (explicit + implicit).
+     */
+    public function totalMemberCount(): int
+    {
+        $explicitCount = $this->users()->count();
+
+        $org = $this->organization;
+        $explicitUserIds = $this->users()->pluck('users.id');
+
+        app(\Spatie\Permission\PermissionRegistrar::class)->setPermissionsTeamId($org->id);
+        $implicitCount = $org->users()
+            ->whereNotIn('users.id', $explicitUserIds)
+            ->get()
+            ->filter(function ($user) {
+                $user->unsetRelation('roles');
+                return $user->hasRole(['owner', 'admin']);
+            })
+            ->count();
+
+        return $explicitCount + $implicitCount;
+    }
+
     public function setAsDefault(): void
     {
         DB::transaction(function () {
