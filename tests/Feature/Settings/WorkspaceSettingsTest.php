@@ -108,7 +108,7 @@ it('adds user to workspace', function () {
     $member->organizations()->attach($this->org->id);
     $member->current_organization_id = $this->org->id;
     $member->save();
-    app(\Spatie\Permission\PermissionRegistrar::class)->setPermissionsTeamId($this->org->id);
+    app(PermissionRegistrar::class)->setPermissionsTeamId($this->org->id);
     $member->assignRole('viewer');
 
     Volt::actingAs($this->owner)

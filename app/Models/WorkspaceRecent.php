@@ -8,7 +8,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class WorkspaceRecent extends Model
 {
     public $timestamps = false;
+
     protected $table = 'workspace_recent';
+
     protected $fillable = ['user_id', 'organization_id', 'workspace_id', 'switched_at'];
 
     protected function casts(): array

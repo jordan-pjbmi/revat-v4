@@ -6,8 +6,10 @@ use App\Events\WorkspaceSwitched;
 use App\Models\Organization;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Models\WorkspaceRecent;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Session;
+use Spatie\Permission\PermissionRegistrar;
 
 class WorkspaceContext
 {
@@ -189,7 +191,7 @@ class WorkspaceContext
         // setPermissionsTeamId() scopes subsequent role checks to this org.
         // unsetRelation('roles') clears any cached roles from a previous team
         // context so Spatie re-queries with the new team_id.
-        app(\Spatie\Permission\PermissionRegistrar::class)->setPermissionsTeamId($organization->id);
+        app(PermissionRegistrar::class)->setPermissionsTeamId($organization->id);
         $user->unsetRelation('roles');
 
         if ($user->hasRole(['owner', 'admin'])) {
@@ -218,7 +220,7 @@ class WorkspaceContext
 
     public function recentWorkspaces(User $user, Organization $organization, ?int $excludeWorkspaceId = null): Collection
     {
-        $query = \App\Models\WorkspaceRecent::where('user_id', $user->id)
+        $query = WorkspaceRecent::where('user_id', $user->id)
             ->where('organization_id', $organization->id)
             ->orderByDesc('switched_at')
             ->limit(3);
@@ -237,11 +239,13 @@ class WorkspaceContext
         if ($pivot) {
             $newState = ! $pivot->pivot->is_pinned;
             $user->workspaces()->updateExistingPivot($workspace->id, ['is_pinned' => $newState]);
+
             return $newState;
         }
 
         // For implicit-access users with no pivot entry — create one for pin storage
         $user->workspaces()->attach($workspace->id, ['is_pinned' => true]);
+
         return true;
     }
 

@@ -1,4 +1,5 @@
 <?php
+
 // tests/Feature/Navigation/SidebarWorkspaceLinkTest.php
 
 use App\Models\Organization;
