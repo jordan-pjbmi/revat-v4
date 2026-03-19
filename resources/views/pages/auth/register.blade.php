@@ -6,25 +6,32 @@ use App\Services\AlphaAgreementService;
 use App\Services\WaitlistService;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\RateLimiter;
+use Livewire\Attributes\Locked;
 use Livewire\Volt\Component;
 
 new class extends Component {
     // Registration fields
     public string $name = '';
+    #[Locked]
     public string $email = '';
     public string $password = '';
     public string $password_confirmation = '';
     public bool $agree_to_terms = false;
+    #[Locked]
     public string $token = '';
 
     // Waitlist fields
     public string $waitlist_email = '';
 
     // State
+    #[Locked]
     public bool $showRegistration = false;
+    #[Locked]
     public bool $showWaitlist = false;
+    #[Locked]
     public bool $tokenError = false;
-    public bool $registered = false;
+    #[Locked]
     public bool $waitlistSubmitted = false;
 
     public function mount(string $token = ''): void
@@ -67,11 +74,16 @@ new class extends Component {
         }
 
         // Record agreement BEFORE user creation (audit trail)
-        app(AlphaAgreementService::class)->record(
-            email: $invite->email,
-            ipAddress: request()->ip(),
-            userAgent: request()->userAgent(),
-        );
+        // Use try/catch to handle double-submit gracefully
+        try {
+            app(AlphaAgreementService::class)->record(
+                email: $invite->email,
+                ipAddress: request()->ip(),
+                userAgent: request()->userAgent(),
+            );
+        } catch (\InvalidArgumentException) {
+            // Agreement already recorded (double-submit) — continue
+        }
 
         // Check if user already exists
         if (User::where('email', $invite->email)->exists()) {
@@ -99,6 +111,13 @@ new class extends Component {
 
     public function joinWaitlist(): void
     {
+        $key = 'waitlist-join:' . request()->ip();
+        if (RateLimiter::tooManyAttempts($key, 3)) {
+            $this->waitlistSubmitted = true;
+            return;
+        }
+        RateLimiter::hit($key, 60);
+
         $this->validate([
             'waitlist_email' => 'required|email|max:254',
         ]);
@@ -123,12 +142,6 @@ new class extends Component {
 
             @if ($showRegistration)
                 {{-- Alpha invite registration form --}}
-                @if ($registered)
-                    <flux:callout variant="success" icon="check-circle">
-                        <flux:callout.heading>Account created!</flux:callout.heading>
-                        <flux:callout.text>Redirecting you to the dashboard...</flux:callout.text>
-                    </flux:callout>
-                @else
                     <div>
                         <h1 class="text-xl font-semibold">Create your account</h1>
                         <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">You've been invited to join the Revat alpha.</p>
@@ -158,7 +171,6 @@ new class extends Component {
                     <p class="text-sm text-center text-zinc-500 dark:text-zinc-400">
                         Already have an account? <a href="{{ route('login') }}" class="underline hover:text-zinc-900 dark:hover:text-zinc-200" wire:navigate>Log in</a>
                     </p>
-                @endif
             @endif
 
             @if ($showWaitlist)
