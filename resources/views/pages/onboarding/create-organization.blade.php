@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\AlphaInvite;
 use App\Models\Plan;
 use App\Services\OrganizationSetupService;
 use Livewire\Volt\Component;
@@ -18,10 +19,16 @@ new class extends Component
 
     public bool $hasPlans = false;
 
+    public bool $isAlphaUser = false;
+
     public function mount(): void
     {
+        $this->isAlphaUser = AlphaInvite::where('email', auth()->user()->email)
+            ->whereNotNull('registered_at')
+            ->exists();
+
         $plans = Plan::visible()->get();
-        $this->hasPlans = $plans->isNotEmpty();
+        $this->hasPlans = ! $this->isAlphaUser && $plans->isNotEmpty();
 
         if ($this->hasPlans) {
             $this->planSlug = $plans->first()->slug;

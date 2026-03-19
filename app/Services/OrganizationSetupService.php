@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\AlphaInvite;
 use App\Models\Organization;
 use App\Models\Plan;
 use App\Models\User;
@@ -23,6 +24,11 @@ class OrganizationSetupService
     public function setup(User $user, array $data): Organization
     {
         return DB::transaction(function () use ($user, $data) {
+            // Alpha users always get the alpha plan
+            if (AlphaInvite::where('email', $user->email)->whereNotNull('registered_at')->exists()) {
+                $data['plan_slug'] = 'alpha';
+            }
+
             $orgData = [
                 'name' => $data['name'],
                 'timezone' => $data['timezone'] ?? 'UTC',

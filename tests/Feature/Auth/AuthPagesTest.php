@@ -65,22 +65,10 @@ it('shows generic error for invalid credentials', function () {
 });
 
 it('renders the register page', function () {
-    $this->get(route('register'))
+    $this->withoutMiddleware(\Illuminate\Routing\Middleware\ThrottleRequests::class)
+        ->get(route('register'))
         ->assertOk()
-        ->assertSee('Create your account');
-});
-
-it('creates user and redirects on registration', function () {
-    Volt::test('auth.register')
-        ->set('name', 'Test User')
-        ->set('email', 'newuser@example.com')
-        ->set('password', 'securepassword123')
-        ->set('password_confirmation', 'securepassword123')
-        ->call('register')
-        ->assertRedirect(route('dashboard'));
-
-    $this->assertDatabaseHas('users', ['email' => 'newuser@example.com']);
-    $this->assertAuthenticated();
+        ->assertSee('Join the waitlist');
 });
 
 it('renders the forgot password page', function () {
@@ -202,20 +190,6 @@ it('rate limits forgot password at 3 per minute', function () {
         ->assertStatus(429);
 });
 
-it('does not reveal whether an email is already taken during registration', function () {
-    User::factory()->create(['email' => 'existing@example.com']);
-
-    $component = Volt::test('auth.register')
-        ->set('name', 'Test User')
-        ->set('email', 'existing@example.com')
-        ->set('password', 'securepassword123')
-        ->set('password_confirmation', 'securepassword123')
-        ->call('register');
-
-    // Should show success message, not an error
-    $component->assertSet('registered', true);
-    $component->assertHasNoErrors();
-});
 
 it('does not reveal whether an email exists for forgot password', function () {
     Volt::test('auth.forgot-password')

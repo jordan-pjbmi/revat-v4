@@ -46,6 +46,15 @@ class PlanSeeder extends Seeder
                 'is_visible' => true,
                 'sort_order' => 3,
             ],
+            [
+                'name' => 'Alpha',
+                'slug' => 'alpha',
+                'max_workspaces' => 999,
+                'max_integrations_per_workspace' => 999,
+                'max_users' => 999,
+                'is_visible' => false,
+                'sort_order' => 0,
+            ],
         ];
 
         foreach ($plans as $plan) {

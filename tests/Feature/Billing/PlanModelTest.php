@@ -69,13 +69,16 @@ it('finds plan by slug', function () {
         ->and($plan->slug)->toBe('growth-plan');
 });
 
-it('creates 4 default plans from PlanSeeder', function () {
+it('creates default plans from PlanSeeder', function () {
     $this->seed(PlanSeeder::class);
 
-    expect(Plan::count())->toBe(4);
+    expect(Plan::count())->toBe(5);
 
-    $slugs = Plan::orderBy('sort_order')->pluck('slug')->all();
-    expect($slugs)->toBe(['free', 'starter', 'growth', 'agency']);
+    $visibleSlugs = Plan::visible()->pluck('slug')->all();
+    expect($visibleSlugs)->toBe(['free', 'starter', 'growth', 'agency']);
+
+    // Alpha plan exists but is hidden
+    expect(Plan::where('slug', 'alpha')->where('is_visible', false)->exists())->toBeTrue();
 });
 
 it('has organizations relationship', function () {
