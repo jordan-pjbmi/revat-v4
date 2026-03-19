@@ -24,6 +24,7 @@ class TestDataSeeder extends Seeder
         $this->call([
             RolesAndPermissionsSeeder::class,
             PlanSeeder::class,
+            Test\AdminSeeder::class,
             Test\FoundationSeeder::class,
             Test\BillingSeeder::class,
             Test\PieSeeder::class,
