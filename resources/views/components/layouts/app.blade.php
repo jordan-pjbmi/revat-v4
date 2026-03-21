@@ -40,7 +40,10 @@
                 <flux:sidebar.item href="{{ route('attribution.stats') }}" :current="request()->routeIs('attribution.stats')" data-testid="nav-attribution-stats">Stats</flux:sidebar.item>
             </flux:sidebar.group>
             <flux:sidebar.item icon="puzzle-piece" href="{{ route('integrations') }}" :current="request()->routeIs('integrations', 'integrations.*')" data-testid="nav-integrations">Integrations</flux:sidebar.item>
-            <flux:sidebar.item icon="cog-6-tooth" href="{{ route('settings.profile') }}" :current="request()->routeIs('settings.*')" data-testid="nav-settings">Settings</flux:sidebar.item>
+            @can('manage')
+                <flux:sidebar.item icon="square-3-stack-3d" href="{{ route('settings.workspaces') }}" :current="request()->routeIs('settings.workspaces*')" data-testid="nav-workspaces">Workspaces</flux:sidebar.item>
+            @endcan
+            <flux:sidebar.item icon="cog-6-tooth" href="{{ route('settings.profile') }}" :current="request()->routeIs('settings.*') && !request()->routeIs('settings.workspaces*')" data-testid="nav-settings">Settings</flux:sidebar.item>
         </flux:sidebar.nav>
 
         <flux:spacer />
@@ -111,10 +114,17 @@
             {{-- Workspace Switcher --}}
             @php
                 $workspace = app(\App\Services\WorkspaceContext::class)->getWorkspace();
+                $workspaceContext = app(\App\Services\WorkspaceContext::class);
                 $accessibleWorkspaceIds = $currentOrg ? $user->accessibleWorkspaceIds($currentOrg) : collect();
-                $workspaces = $accessibleWorkspaceIds->isNotEmpty()
-                    ? \App\Models\Workspace::whereIn('id', $accessibleWorkspaceIds)->get()
+                $allWorkspaces = $accessibleWorkspaceIds->isNotEmpty()
+                    ? \App\Models\Workspace::whereIn('id', $accessibleWorkspaceIds)->orderBy('name')->get()
                     : collect();
+                $pinnedIds = $currentOrg ? $workspaceContext->pinnedWorkspaceIds($user, $currentOrg) : collect();
+                $pinnedWorkspaces = $allWorkspaces->filter(fn ($ws) => $pinnedIds->contains($ws->id));
+                $recentWorkspaces = $currentOrg && $workspace
+                    ? $workspaceContext->recentWorkspaces($user, $currentOrg, $workspace->id)
+                    : collect();
+                $showSearch = $allWorkspaces->count() >= 5;
             @endphp
 
             <flux:dropdown data-testid="workspace-switcher">
@@ -123,12 +133,74 @@
                     <flux:icon.chevron-down class="size-4" />
                 </flux:button>
 
-                <flux:menu>
-                    @foreach ($workspaces as $ws)
-                        <form method="POST" action="{{ route('switch-workspace', $ws) }}">
-                            @csrf
-                            <flux:menu.item type="submit">{{ $ws->name }}</flux:menu.item>
-                        </form>
+                <flux:menu class="min-w-[240px]" x-data="{ search: '' }">
+                    @can('manage')
+                        <flux:menu.item icon="cog-6-tooth" href="{{ route('settings.workspaces') }}" data-testid="manage-workspaces-link">
+                            Manage Workspaces
+                        </flux:menu.item>
+                        <flux:separator />
+                    @endcan
+
+                    @if ($showSearch)
+                        <div class="px-2 py-1.5">
+                            <input type="text" x-model="search" placeholder="Search workspaces..."
+                                class="w-full text-sm bg-transparent border border-zinc-200 dark:border-zinc-600 rounded-md px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500 text-zinc-900 dark:text-white placeholder-zinc-400" />
+                        </div>
+                    @endif
+
+                    @if ($pinnedWorkspaces->isNotEmpty())
+                        <flux:menu.heading>Pinned</flux:menu.heading>
+                        @foreach ($pinnedWorkspaces as $ws)
+                            <div x-show="!search || {{ Js::from(strtolower($ws->name)) }}.includes(search.toLowerCase())" class="flex items-center">
+                                <form method="POST" action="{{ route('switch-workspace', $ws) }}" class="flex-1">
+                                    @csrf
+                                    <flux:menu.item type="submit" class="flex items-center justify-between">
+                                        <span>{{ $ws->name }}</span>
+                                        @if ($workspace && $ws->id === $workspace->id)
+                                            <flux:icon.check class="size-4 text-blue-500" />
+                                        @endif
+                                    </flux:menu.item>
+                                </form>
+                            </div>
+                        @endforeach
+                        <flux:separator />
+                    @endif
+
+                    @if ($recentWorkspaces->isNotEmpty())
+                        <flux:menu.heading>Recent</flux:menu.heading>
+                        @foreach ($recentWorkspaces as $ws)
+                            <div x-show="!search || {{ Js::from(strtolower($ws->name)) }}.includes(search.toLowerCase())">
+                                <form method="POST" action="{{ route('switch-workspace', $ws) }}">
+                                    @csrf
+                                    <flux:menu.item type="submit">{{ $ws->name }}</flux:menu.item>
+                                </form>
+                            </div>
+                        @endforeach
+                        <flux:separator />
+                    @endif
+
+                    <flux:menu.heading>All Workspaces</flux:menu.heading>
+                    @foreach ($allWorkspaces as $ws)
+                        <div x-show="!search || {{ Js::from(strtolower($ws->name)) }}.includes(search.toLowerCase())" class="group flex items-center">
+                            <form method="POST" action="{{ route('switch-workspace', $ws) }}" class="flex-1">
+                                @csrf
+                                <flux:menu.item type="submit" class="flex items-center justify-between">
+                                    <span>{{ $ws->name }}</span>
+                                    @if ($workspace && $ws->id === $workspace->id)
+                                        <flux:icon.check class="size-4 text-blue-500" />
+                                    @endif
+                                </flux:menu.item>
+                            </form>
+                            <button x-data x-on:click.stop="fetch('{{ route('toggle-workspace-pin', $ws) }}', { method: 'POST', headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json' } }).then(() => window.location.reload())"
+                                class="hidden group-hover:flex items-center justify-center size-7 shrink-0 mr-1 rounded hover:bg-zinc-100 dark:hover:bg-zinc-700"
+                                title="{{ $pinnedIds->contains($ws->id) ? 'Unpin' : 'Pin' }}">
+                                @if ($pinnedIds->contains($ws->id))
+                                    <flux:icon.star class="size-3.5 text-amber-500" variant="solid" />
+                                @else
+                                    <flux:icon.star class="size-3.5 text-zinc-400" />
+                                @endif
+                            </button>
+                        </div>
                     @endforeach
                 </flux:menu>
             </flux:dropdown>

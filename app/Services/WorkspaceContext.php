@@ -6,8 +6,10 @@ use App\Events\WorkspaceSwitched;
 use App\Models\Organization;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Models\WorkspaceRecent;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Session;
+use Spatie\Permission\PermissionRegistrar;
 
 class WorkspaceContext
 {
@@ -185,6 +187,20 @@ class WorkspaceContext
             return $this->accessibleCache[$cacheKey];
         }
 
+        // Owner/admin get implicit access to all org workspaces.
+        // setPermissionsTeamId() scopes subsequent role checks to this org.
+        // unsetRelation('roles') clears any cached roles from a previous team
+        // context so Spatie re-queries with the new team_id.
+        app(PermissionRegistrar::class)->setPermissionsTeamId($organization->id);
+        $user->unsetRelation('roles');
+
+        if ($user->hasRole(['owner', 'admin'])) {
+            $ids = $organization->workspaces()->pluck('id');
+            $this->accessibleCache[$cacheKey] = $ids;
+
+            return $ids;
+        }
+
         $ids = $user->workspaces()
             ->where('workspaces.organization_id', $organization->id)
             ->pluck('workspaces.id');
@@ -192,6 +208,45 @@ class WorkspaceContext
         $this->accessibleCache[$cacheKey] = $ids;
 
         return $ids;
+    }
+
+    public function pinnedWorkspaceIds(User $user, Organization $organization): Collection
+    {
+        return $user->workspaces()
+            ->where('workspaces.organization_id', $organization->id)
+            ->wherePivot('is_pinned', true)
+            ->pluck('workspaces.id');
+    }
+
+    public function recentWorkspaces(User $user, Organization $organization, ?int $excludeWorkspaceId = null): Collection
+    {
+        $query = WorkspaceRecent::where('user_id', $user->id)
+            ->where('organization_id', $organization->id)
+            ->orderByDesc('switched_at')
+            ->limit(3);
+
+        if ($excludeWorkspaceId) {
+            $query->where('workspace_id', '!=', $excludeWorkspaceId);
+        }
+
+        return $query->with('workspace')->get()->pluck('workspace')->filter();
+    }
+
+    public function togglePin(User $user, Workspace $workspace): bool
+    {
+        $pivot = $user->workspaces()->where('workspaces.id', $workspace->id)->first();
+
+        if ($pivot) {
+            $newState = ! $pivot->pivot->is_pinned;
+            $user->workspaces()->updateExistingPivot($workspace->id, ['is_pinned' => $newState]);
+
+            return $newState;
+        }
+
+        // For implicit-access users with no pivot entry — create one for pin storage
+        $user->workspaces()->attach($workspace->id, ['is_pinned' => true]);
+
+        return true;
     }
 
     protected function sessionKey(int $userId, int $orgId): string

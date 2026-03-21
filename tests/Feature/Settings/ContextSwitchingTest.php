@@ -86,12 +86,23 @@ it('switches workspace and updates session context', function () {
 });
 
 it('returns 403 when switching to a workspace the user does not have access to', function () {
+    // Owner/admin get implicit access to all org workspaces, so use an editor
+    // (non-admin role) to test that explicit-only access is enforced.
+    $editor = User::factory()->create(['email_verified_at' => now()]);
+    $editor->organizations()->attach($this->org->id);
+    $editor->current_organization_id = $this->org->id;
+    $editor->save();
+
+    app(PermissionRegistrar::class)->setPermissionsTeamId($this->org->id);
+    $editor->assignRole('editor');
+    $editor->workspaces()->attach($this->workspace->id); // only ws1, not restrictedWs
+
     $restrictedWs = new Workspace(['name' => 'Restricted']);
     $restrictedWs->organization_id = $this->org->id;
     $restrictedWs->save();
-    // Not attached to user
+    // Not attached to editor
 
-    $response = $this->actingAs($this->user)
+    $response = $this->actingAs($editor)
         ->withoutMiddleware(VerifyCsrfToken::class)
         ->post(route('switch-workspace', $restrictedWs));
 

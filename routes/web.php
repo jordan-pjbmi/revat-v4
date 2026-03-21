@@ -7,6 +7,7 @@ use App\Http\Controllers\SwitchOrganizationController;
 use App\Http\Controllers\SwitchWorkspaceController;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Services\WorkspaceContext;
 use Illuminate\Foundation\Auth\EmailVerificationRequest;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -208,6 +209,17 @@ Route::middleware(['auth', 'verified', 'onboarded', 'organization', 'throttle:30
     Route::post('/switch-workspace/{workspace}', SwitchWorkspaceController::class)
         ->name('switch-workspace');
 });
+
+Route::post('/toggle-workspace-pin/{workspace}', function (Workspace $workspace) {
+    $user = auth()->user();
+    $org = $user->currentOrganization;
+    if ($workspace->organization_id !== $org->id) {
+        abort(403);
+    }
+    $isPinned = app(WorkspaceContext::class)->togglePin($user, $workspace);
+
+    return response()->json(['is_pinned' => $isPinned]);
+})->middleware(['auth', 'verified', 'onboarded', 'organization'])->name('toggle-workspace-pin');
 
 // ── Invitation Routes ───────────────────────────────────────────────────
 Route::get('/alpha-agreement', fn () => view('pages.alpha-agreement'))

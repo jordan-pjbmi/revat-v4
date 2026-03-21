@@ -108,12 +108,13 @@ it('adds user to workspace', function () {
     $member->organizations()->attach($this->org->id);
     $member->current_organization_id = $this->org->id;
     $member->save();
+    app(PermissionRegistrar::class)->setPermissionsTeamId($this->org->id);
+    $member->assignRole('viewer');
 
     Volt::actingAs($this->owner)
         ->test('settings.workspaces.users', ['workspace' => $this->workspace])
-        ->set('showAddForm', true)
-        ->set('selectedUserId', $member->id)
-        ->call('addUser')
+        ->set('addUserIds', [$member->id])
+        ->call('addUsers')
         ->assertHasNoErrors();
 
     expect($this->workspace->users()->where('users.id', $member->id)->exists())->toBeTrue();
@@ -142,11 +143,19 @@ it('prevents adding user from different org to workspace', function () {
 
     Volt::actingAs($this->owner)
         ->test('settings.workspaces.users', ['workspace' => $this->workspace])
-        ->set('selectedUserId', $outsider->id)
-        ->call('addUser')
-        ->assertHasErrors('selectedUserId');
+        ->set('addUserIds', [$outsider->id])
+        ->call('addUsers')
+        ->assertHasNoErrors();
 
+    // Outsider is silently rejected since they don't belong to this org
     expect($this->workspace->users()->where('users.id', $outsider->id)->exists())->toBeFalse();
+});
+
+it('renders workspace name as link to users page', function () {
+    $this->actingAs($this->owner)
+        ->get(route('settings.workspaces'))
+        ->assertOk()
+        ->assertSee(route('settings.workspaces.users', $this->workspace), false);
 });
 
 it('denies non-admin users access to workspace settings', function () {
