@@ -1,10 +1,12 @@
 <?php
 
+use App\Mail\InvitationMail;
 use App\Models\Invitation;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Services\AuditService;
 use App\Services\InvitationService;
+use Illuminate\Support\Facades\Mail;
 use Livewire\Volt\Component;
 use Spatie\Permission\PermissionRegistrar;
 
@@ -167,7 +169,10 @@ new class extends Component
         $org = auth()->user()->currentOrganization;
         $invitation = $org->invitations()->findOrFail($invitationId);
 
-        app(InvitationService::class)->resend($invitation);
+        $invitation = app(InvitationService::class)->resend($invitation);
+
+        $acceptUrl = route('invitations.accept', ['token' => $invitation->plaintext_token]);
+        Mail::send(new InvitationMail($invitation, $acceptUrl));
 
         session()->flash('invitation-resent', true);
     }
@@ -179,6 +184,7 @@ new class extends Component
     }
 
     public ?int $managingWorkspacesFor = null;
+    public bool $showWorkspaceModal = false;
     public string $workspaceSearch = '';
     public ?int $confirmingLastWorkspaceRemoval = null;
     public ?int $lastWorkspaceRemovalWorkspaceId = null;
@@ -186,6 +192,7 @@ new class extends Component
     public function showWorkspaceManager(int $userId): void
     {
         $this->managingWorkspacesFor = $userId;
+        $this->showWorkspaceModal = true;
         $this->workspaceSearch = '';
     }
 
@@ -398,14 +405,14 @@ new class extends Component
                             <div>
                                 <p class="text-[13.5px] font-medium text-zinc-900 dark:text-white">{{ $invitation->email }}</p>
                                 <p class="text-xs text-zinc-400 mt-0.5">
-                                    Invited as {{ ucfirst($invitation->role) }} &middot; Sent {{ $invitation->created_at->diffForHumans() }}
+                                    Invited as {{ ucfirst($invitation->role) }} &middot; Sent {{ $invitation->updated_at->diffForHumans() }}
                                 </p>
                             </div>
                             <div class="flex items-center gap-2">
-                                <flux:button wire:click="resendInvitation({{ $invitation->id }})" variant="ghost" size="xs">
+                                <flux:button wire:click="resendInvitation({{ $invitation->id }})" variant="ghost" size="xs" class="cursor-pointer">
                                     Resend
                                 </flux:button>
-                                <flux:button wire:click="revokeInvitation({{ $invitation->id }})" variant="danger" size="xs">
+                                <flux:button wire:click="revokeInvitation({{ $invitation->id }})" variant="danger" size="xs" class="cursor-pointer">
                                     Revoke
                                 </flux:button>
                             </div>
@@ -415,7 +422,7 @@ new class extends Component
             @endif
 
             {{-- Workspace Assignment Modal --}}
-            <flux:modal wire:model.self="managingWorkspacesFor" class="max-w-sm">
+            <flux:modal wire:model.self="showWorkspaceModal" class="max-w-sm">
                 @if ($managingWorkspacesFor)
                     @php $assignments = $this->getWorkspaceAssignments($managingWorkspacesFor); @endphp
                     <div class="space-y-4">
@@ -433,20 +440,20 @@ new class extends Component
                         <div class="max-h-64 overflow-y-auto">
                             @foreach ($assignments['workspaces'] as $ws)
                                 @if (! $workspaceSearch || str_contains(strtolower($ws['name']), strtolower($workspaceSearch)))
-                                    <label class="flex items-center gap-3 px-2 py-2 hover:bg-zinc-50 dark:hover:bg-zinc-700 rounded cursor-pointer">
+                                    <div class="flex items-center gap-3 px-2 py-2 hover:bg-zinc-50 dark:hover:bg-zinc-700 rounded cursor-pointer"
+                                        wire:click="toggleWorkspaceAssignment({{ $managingWorkspacesFor }}, {{ $ws['id'] }})">
                                         <input type="checkbox"
                                             {{ $ws['assigned'] ? 'checked' : '' }}
                                             {{ $ws['implicit'] ? 'disabled' : '' }}
-                                            wire:click="toggleWorkspaceAssignment({{ $managingWorkspacesFor }}, {{ $ws['id'] }})"
-                                            class="rounded border-zinc-300 dark:border-zinc-600 text-blue-600 {{ $ws['implicit'] ? 'opacity-50' : '' }}">
+                                            class="rounded border-zinc-300 dark:border-zinc-600 text-blue-600 pointer-events-none {{ $ws['implicit'] ? 'opacity-50' : '' }}">
                                         <span class="text-sm text-zinc-900 dark:text-white">{{ $ws['name'] }}</span>
-                                    </label>
+                                    </div>
                                 @endif
                             @endforeach
                         </div>
 
                         <div class="flex justify-end">
-                            <flux:button wire:click="$set('managingWorkspacesFor', null)" variant="ghost" size="sm">Close</flux:button>
+                            <flux:button wire:click="$set('showWorkspaceModal', false)" variant="ghost" size="sm">Close</flux:button>
                         </div>
                     </div>
                 @endif

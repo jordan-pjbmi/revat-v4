@@ -1,11 +1,13 @@
 <?php
 
+use App\Mail\InvitationMail;
 use App\Models\AuditLog;
 use App\Models\Invitation;
 use App\Models\Organization;
 use App\Models\User;
 use App\Models\Workspace;
 use Database\Seeders\RolesAndPermissionsSeeder;
+use Illuminate\Support\Facades\Mail;
 use Livewire\Volt\Volt;
 use Spatie\Permission\PermissionRegistrar;
 
@@ -148,6 +150,62 @@ it('denies non-admin users access to user management', function () {
     $this->actingAs($viewer)
         ->get(route('settings.users'))
         ->assertForbidden();
+});
+
+it('sends invitation email when creating invitation', function () {
+    Mail::fake();
+
+    Volt::actingAs($this->owner)
+        ->test('settings.users.invite')
+        ->set('email', 'mail-test@example.com')
+        ->set('role', 'editor')
+        ->call('invite');
+
+    Mail::assertSent(InvitationMail::class, function (InvitationMail $mail) {
+        return $mail->invitation->email === 'mail-test@example.com'
+            && str_contains($mail->acceptUrl, '/invitations/');
+    });
+});
+
+it('sends invitation email when resending invitation', function () {
+    Mail::fake();
+
+    $invitation = $this->org->invitations()->create([
+        'email' => 'resend-test@example.com',
+        'role' => 'editor',
+        'invited_by' => $this->owner->id,
+        'token_hash' => hash('sha256', 'old-token'),
+        'expires_at' => now()->addDays(7),
+    ]);
+
+    Volt::actingAs($this->owner)
+        ->test('settings.users.index')
+        ->call('resendInvitation', $invitation->id);
+
+    Mail::assertSent(InvitationMail::class, function (InvitationMail $mail) {
+        return $mail->invitation->email === 'resend-test@example.com'
+            && str_contains($mail->acceptUrl, '/invitations/');
+    });
+});
+
+it('can toggle workspace assignment for editor', function () {
+    $editor = User::factory()->create(['email_verified_at' => now()]);
+    $editor->organizations()->attach($this->org->id);
+    $editor->current_organization_id = $this->org->id;
+    $editor->save();
+    app(PermissionRegistrar::class)->setPermissionsTeamId($this->org->id);
+    $editor->assignRole('editor');
+
+    // Editor starts without workspace assignment
+    expect($this->workspace->users()->where('users.id', $editor->id)->exists())->toBeFalse();
+
+    Volt::actingAs($this->owner)
+        ->test('settings.users.index')
+        ->call('showWorkspaceManager', $editor->id)
+        ->call('toggleWorkspaceAssignment', $editor->id, $this->workspace->id)
+        ->assertHasNoErrors();
+
+    expect($this->workspace->users()->where('users.id', $editor->id)->exists())->toBeTrue();
 });
 
 it('logs invitation creation via audit service', function () {

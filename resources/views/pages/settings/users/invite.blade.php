@@ -1,7 +1,9 @@
 <?php
 
+use App\Mail\InvitationMail;
 use App\Services\AuditService;
 use App\Services\InvitationService;
+use Illuminate\Support\Facades\Mail;
 use Livewire\Volt\Component;
 
 new class extends Component
@@ -26,7 +28,10 @@ new class extends Component
             return;
         }
 
-        $service->create($org, $this->email, $this->role, auth()->user());
+        $invitation = $service->create($org, $this->email, $this->role, auth()->user());
+
+        $acceptUrl = route('invitations.accept', ['token' => $invitation->plaintext_token]);
+        Mail::send(new InvitationMail($invitation, $acceptUrl));
 
         AuditService::log(
             action: 'organization.member_invited',
