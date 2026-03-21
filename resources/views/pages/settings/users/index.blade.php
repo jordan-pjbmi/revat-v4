@@ -12,9 +12,13 @@ use Spatie\Permission\PermissionRegistrar;
 
 new class extends Component
 {
+    public bool $showRoleChangeModal = false;
+
     public ?int $confirmingRoleChangeFor = null;
 
     public string $newRole = '';
+
+    public bool $showRemovalModal = false;
 
     public ?int $confirmingRemovalFor = null;
 
@@ -50,6 +54,7 @@ new class extends Component
     {
         $this->confirmingRoleChangeFor = $userId;
         $this->newRole = $role;
+        $this->showRoleChangeModal = true;
     }
 
     public function changeRole(): void
@@ -104,6 +109,7 @@ new class extends Component
     public function confirmRemoval(int $userId): void
     {
         $this->confirmingRemovalFor = $userId;
+        $this->showRemovalModal = true;
     }
 
     public function removeMember(): void
@@ -124,6 +130,7 @@ new class extends Component
 
             if ($ownerCount <= 1) {
                 $this->addError('removal', 'Cannot remove the last owner.');
+                $this->showRemovalModal = false;
                 $this->confirmingRemovalFor = null;
 
                 return;
@@ -153,6 +160,7 @@ new class extends Component
             resourceId: $user->id,
         );
 
+        $this->showRemovalModal = false;
         $this->confirmingRemovalFor = null;
     }
 
@@ -179,6 +187,7 @@ new class extends Component
 
     private function resetRoleChange(): void
     {
+        $this->showRoleChangeModal = false;
         $this->confirmingRoleChangeFor = null;
         $this->newRole = '';
     }
@@ -362,7 +371,7 @@ new class extends Component
             </div>
 
             {{-- Role Change Confirmation Modal --}}
-            <flux:modal wire:model.self="confirmingRoleChangeFor" class="max-w-sm">
+            <flux:modal wire:model.self="showRoleChangeModal" class="max-w-sm">
                 <div class="space-y-4">
                     <flux:heading>Change Role</flux:heading>
                     <p class="text-sm text-zinc-500 dark:text-zinc-400">
@@ -372,14 +381,14 @@ new class extends Component
                         <p class="text-sm text-red-600">{{ $message }}</p>
                     @enderror
                     <div class="flex justify-end gap-2">
-                        <flux:button wire:click="$set('confirmingRoleChangeFor', null)" variant="ghost">Cancel</flux:button>
+                        <flux:button wire:click="$set('showRoleChangeModal', false)" variant="ghost">Cancel</flux:button>
                         <flux:button wire:click="changeRole" variant="primary">Confirm</flux:button>
                     </div>
                 </div>
             </flux:modal>
 
             {{-- Remove Member Confirmation Modal --}}
-            <flux:modal wire:model.self="confirmingRemovalFor" class="max-w-sm">
+            <flux:modal wire:model.self="showRemovalModal" class="max-w-sm">
                 <div class="space-y-4">
                     <flux:heading>Remove Member</flux:heading>
                     <p class="text-sm text-zinc-500 dark:text-zinc-400">
@@ -389,7 +398,7 @@ new class extends Component
                         <p class="text-sm text-red-600">{{ $message }}</p>
                     @enderror
                     <div class="flex justify-end gap-2">
-                        <flux:button wire:click="$set('confirmingRemovalFor', null)" variant="ghost">Cancel</flux:button>
+                        <flux:button wire:click="$set('showRemovalModal', false)" variant="ghost">Cancel</flux:button>
                         <flux:button wire:click="removeMember" variant="danger">Remove</flux:button>
                     </div>
                 </div>
