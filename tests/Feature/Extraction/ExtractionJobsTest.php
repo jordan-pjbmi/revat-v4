@@ -5,6 +5,7 @@ use App\Http\Integrations\ActiveCampaign\Requests\GetMessagesRequest;
 use App\Jobs\Extraction\ExtractDataType;
 use App\Jobs\Extraction\ExtractIntegration;
 use App\Jobs\Extraction\UpsertRawData;
+use App\Jobs\TransformExtractionBatches;
 use App\Models\CampaignEmailRawData;
 use App\Models\ExtractionBatch;
 use App\Models\ExtractionRecord;
@@ -113,6 +114,8 @@ it('creates batch, stores records, and dispatches upsert via ExtractDataType', f
 });
 
 it('upserts records into correct raw data table', function () {
+    Queue::fake([TransformExtractionBatches::class]);
+
     // Create a batch with extraction records
     $batch = ExtractionBatch::create([
         'integration_id' => $this->integration->id,

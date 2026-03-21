@@ -1,11 +1,13 @@
 <?php
 
+use App\Jobs\Extraction\ExtractIntegration;
 use App\Models\Integration;
 use App\Models\Organization;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Services\WorkspaceContext;
 use Database\Seeders\RolesAndPermissionsSeeder;
+use Illuminate\Support\Facades\Queue;
 use Livewire\Volt\Volt;
 use Spatie\Permission\PermissionRegistrar;
 
@@ -99,6 +101,8 @@ it('shows add integration link', function () {
 });
 
 it('can create an integration via the wizard', function () {
+    Queue::fake([ExtractIntegration::class]);
+
     $this->actingAs($this->user);
     app(WorkspaceContext::class)->setWorkspace($this->workspace);
 
@@ -126,6 +130,8 @@ it('can create an integration via the wizard', function () {
         'sync_interval_minutes' => 60,
         'is_active' => true,
     ]);
+
+    Queue::assertPushed(ExtractIntegration::class);
 });
 
 it('validates required fields when creating integration', function () {

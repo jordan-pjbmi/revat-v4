@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\AlphaInvite;
 use App\Models\User;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
@@ -17,11 +18,16 @@ beforeEach(function () {
 it('sends verification email on registration', function () {
     Notification::fake();
 
-    Volt::test('auth.register')
+    $token = 'test-alpha-invite-token';
+    AlphaInvite::factory()->withToken($token)->create([
+        'email' => 'verify@example.com',
+    ]);
+
+    Volt::test('auth.register', ['token' => $token])
         ->set('name', 'Test User')
-        ->set('email', 'verify@example.com')
         ->set('password', 'securepassword123')
         ->set('password_confirmation', 'securepassword123')
+        ->set('agree_to_terms', true)
         ->call('register');
 
     $user = User::where('email', 'verify@example.com')->first();

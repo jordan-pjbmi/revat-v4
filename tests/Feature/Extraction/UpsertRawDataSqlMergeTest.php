@@ -1,6 +1,7 @@
 <?php
 
 use App\Jobs\Extraction\UpsertRawData;
+use App\Jobs\TransformExtractionBatches;
 use App\Models\CampaignEmailClickRawData;
 use App\Models\CampaignEmailRawData;
 use App\Models\ConversionSaleRawData;
@@ -9,8 +10,11 @@ use App\Models\ExtractionRecord;
 use App\Models\Integration;
 use App\Models\Organization;
 use App\Models\Workspace;
+use Illuminate\Support\Facades\Queue;
 
 beforeEach(function () {
+    Queue::fake([TransformExtractionBatches::class]);
+
     $this->org = Organization::create(['name' => 'Test Org']);
     $this->workspace = new Workspace(['name' => 'Default']);
     $this->workspace->organization_id = $this->org->id;

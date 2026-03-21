@@ -21,8 +21,8 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Services\AttributionEngine;
 use App\Services\ConnectorKeyProcessor;
-use App\Services\EffortResolver;
 use App\Services\Dashboard\MetricsService;
+use App\Services\EffortResolver;
 use App\Services\Transformation\TransformerRegistry;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Support\Facades\DB;
@@ -55,8 +55,9 @@ it('flows data through the entire pipeline: extract -> transform -> attribute ->
         'program_id' => $program->id,
         'name' => 'Welcome Flow',
         'code' => 'WF',
+        'is_default' => true,
     ]);
-    $effort = Effort::create([
+    Effort::create([
         'workspace_id' => $workspace->id,
         'initiative_id' => $initiative->id,
         'name' => 'Welcome Email',
@@ -101,20 +102,17 @@ it('flows data through the entire pipeline: extract -> transform -> attribute ->
             'external_id' => 'camp-pipeline-1',
             'name' => 'Pipeline Welcome',
             'subject' => 'Welcome!',
-            'from_name' => 'Pipeline Team',
-            'from_email' => $sharedEmail,
-            'type' => 'regular',
-            'sent' => 2000,
+            'fromname' => 'Pipeline Team',
+            'fromemail' => $sharedEmail,
+            'send_amt' => 2000,
             'delivered' => 1900,
-            'bounces' => 40,
-            'complaints' => 3,
+            '_bounces' => 40,
             'unsubscribes' => 10,
             'opens' => 600,
-            'unique_opens' => 400,
-            'clicks' => 100,
-            'unique_clicks' => 70,
-            'platform_revenue' => 200.00,
-            'sent_at' => $sentDate->toIso8601String(),
+            'uniqueopens' => 400,
+            'linkclicks' => 100,
+            'uniquelinkclicks' => 70,
+            'sdate' => $sentDate->toIso8601String(),
         ],
     ]);
 
@@ -128,6 +126,8 @@ it('flows data through the entire pipeline: extract -> transform -> attribute ->
             'payout' => 120.00,
             'cost' => 30.00,
             'converted_at' => now()->subDays(3)->toIso8601String(),
+            'customVariable1' => $sharedEmail,
+            'customVariable1-TS' => 'email',
         ],
     ]);
 
@@ -186,9 +186,7 @@ it('flows data through the entire pipeline: extract -> transform -> attribute ->
     expect($conversionBatch->fresh()->status)->toBe(ExtractionBatch::STATUS_TRANSFORMED);
 
     // ── Stage 4: Attribution ────────────────────────────────────────────
-    // Link campaign to effort
-    $campaign->effort_id = $effort->id;
-    $campaign->save();
+    // Effort resolution is handled automatically by EffortResolver via attribution_keys
 
     // Create identity hash and click
     $hash = hash('sha256', $sharedEmail, true);
@@ -213,10 +211,10 @@ it('flows data through the entire pipeline: extract -> transform -> attribute ->
         'workspace_id' => $workspace->id,
         'name' => 'Pipeline Connector',
         'campaign_integration_id' => $campaignIntegration->id,
-        'campaign_data_type' => 'email',
+        'campaign_data_type' => 'campaign_emails',
         'conversion_integration_id' => $conversionIntegration->id,
-        'conversion_data_type' => 'sale',
-        'field_mappings' => [['campaign' => 'from_email', 'conversion' => 'external_id']],
+        'conversion_data_type' => 'conversion_sales',
+        'field_mappings' => [['campaign' => 'fromemail', 'conversion' => 'email']],
         'is_active' => true,
     ]);
 
