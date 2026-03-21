@@ -10,7 +10,7 @@ use App\Models\Organization;
 use App\Models\User;
 use App\Models\Workspace;
 use Database\Seeders\RolesAndPermissionsSeeder;
-use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
+use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Support\Facades\DB;
 use Spatie\Permission\PermissionRegistrar;
 
@@ -57,7 +57,7 @@ it('returns security headers on unauthenticated routes', function () {
 it('protects CSRF on all state-mutating routes', function () {
     // POST without CSRF token should fail
     $response = $this->actingAs($this->user)
-        ->withoutMiddleware(VerifyCsrfToken::class)
+        ->withoutMiddleware(PreventRequestForgery::class)
         ->post('/logout');
 
     // Verify CSRF middleware is registered (re-enable it and expect rejection)

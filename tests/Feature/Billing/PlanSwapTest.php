@@ -4,7 +4,7 @@ use App\Models\Organization;
 use App\Models\Plan;
 use App\Models\User;
 use App\Services\PlanEnforcement\PlanEnforcementService;
-use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
+use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Support\Facades\DB;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
@@ -52,7 +52,7 @@ beforeEach(function () {
 
 it('validates swap request parameters', function () {
     $this->actingAs($this->user)
-        ->withoutMiddleware(VerifyCsrfToken::class)
+        ->withoutMiddleware(PreventRequestForgery::class)
         ->put(route('billing.swap'), [])
         ->assertSessionHasErrors(['plan_id', 'billing_period']);
 });
@@ -76,7 +76,7 @@ it('blocks downgrade when usage exceeds target plan limits', function () {
     ]);
 
     $response = $this->actingAs($this->user)
-        ->withoutMiddleware(VerifyCsrfToken::class)
+        ->withoutMiddleware(PreventRequestForgery::class)
         ->put(route('billing.swap'), [
             'plan_id' => $this->starterPlan->id,
             'billing_period' => 'monthly',

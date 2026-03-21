@@ -2,7 +2,7 @@
 
 use App\Models\User;
 use Illuminate\Auth\Notifications\VerifyEmail;
-use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
+use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\URL;
@@ -74,11 +74,11 @@ it('rate limits resend verification requests', function () {
     $this->actingAs($user);
 
     for ($i = 0; $i < 6; $i++) {
-        $this->withoutMiddleware(VerifyCsrfToken::class)
+        $this->withoutMiddleware(PreventRequestForgery::class)
             ->post(route('verification.send'));
     }
 
-    $this->withoutMiddleware(VerifyCsrfToken::class)
+    $this->withoutMiddleware(PreventRequestForgery::class)
         ->post(route('verification.send'))
         ->assertStatus(429);
 });

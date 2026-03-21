@@ -2,7 +2,7 @@
 
 use App\Models\User;
 use Illuminate\Auth\Notifications\ResetPassword;
-use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
+use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
@@ -151,7 +151,7 @@ it('invalidates session after logout', function () {
     $this->actingAs($user);
     $oldSessionId = session()->getId();
 
-    $this->withoutMiddleware(VerifyCsrfToken::class)
+    $this->withoutMiddleware(PreventRequestForgery::class)
         ->post(route('logout'));
 
     $this->assertGuest();

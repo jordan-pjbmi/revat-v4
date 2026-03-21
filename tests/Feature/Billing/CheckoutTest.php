@@ -3,7 +3,7 @@
 use App\Models\Organization;
 use App\Models\Plan;
 use App\Models\User;
-use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
+use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Support\Facades\DB;
 use Laravel\Cashier\Subscription;
 use Spatie\Permission\Models\Permission;
@@ -50,7 +50,7 @@ it('blocks checkout if organization already has active subscription', function (
     ]);
 
     $response = $this->actingAs($this->user)
-        ->withoutMiddleware(VerifyCsrfToken::class)
+        ->withoutMiddleware(PreventRequestForgery::class)
         ->post(route('billing.checkout'), [
             'plan_id' => $this->plan->id,
             'billing_period' => 'monthly',
@@ -62,14 +62,14 @@ it('blocks checkout if organization already has active subscription', function (
 
 it('validates checkout request parameters', function () {
     $this->actingAs($this->user)
-        ->withoutMiddleware(VerifyCsrfToken::class)
+        ->withoutMiddleware(PreventRequestForgery::class)
         ->post(route('billing.checkout'), [])
         ->assertSessionHasErrors(['plan_id', 'billing_period']);
 });
 
 it('validates billing period value', function () {
     $this->actingAs($this->user)
-        ->withoutMiddleware(VerifyCsrfToken::class)
+        ->withoutMiddleware(PreventRequestForgery::class)
         ->post(route('billing.checkout'), [
             'plan_id' => $this->plan->id,
             'billing_period' => 'weekly',

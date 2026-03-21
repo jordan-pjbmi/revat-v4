@@ -5,7 +5,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Services\WorkspaceContext;
 use Database\Seeders\RolesAndPermissionsSeeder;
-use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
+use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Spatie\Permission\PermissionRegistrar;
 
 beforeEach(function () {
@@ -37,7 +37,7 @@ beforeEach(function () {
 
 it('switches organization and updates current_organization_id and workspace context', function () {
     $response = $this->actingAs($this->user)
-        ->withoutMiddleware(VerifyCsrfToken::class)
+        ->withoutMiddleware(PreventRequestForgery::class)
         ->post(route('switch-organization', $this->org2));
 
     $response->assertRedirect(route('dashboard'));
@@ -56,7 +56,7 @@ it('returns 403 when switching to an organization the user does not belong to', 
     $otherOrg = Organization::create(['name' => 'Other Org']);
 
     $response = $this->actingAs($this->user)
-        ->withoutMiddleware(VerifyCsrfToken::class)
+        ->withoutMiddleware(PreventRequestForgery::class)
         ->post(route('switch-organization', $otherOrg));
 
     $response->assertForbidden();
@@ -74,7 +74,7 @@ it('switches workspace and updates session context', function () {
     app(WorkspaceContext::class)->setWorkspace($this->workspace);
 
     $response = $this->actingAs($this->user)
-        ->withoutMiddleware(VerifyCsrfToken::class)
+        ->withoutMiddleware(PreventRequestForgery::class)
         ->post(route('switch-workspace', $ws2));
 
     $response->assertRedirect();
@@ -103,7 +103,7 @@ it('returns 403 when switching to a workspace the user does not have access to',
     // Not attached to editor
 
     $response = $this->actingAs($editor)
-        ->withoutMiddleware(VerifyCsrfToken::class)
+        ->withoutMiddleware(PreventRequestForgery::class)
         ->post(route('switch-workspace', $restrictedWs));
 
     $response->assertForbidden();
@@ -112,7 +112,7 @@ it('returns 403 when switching to a workspace the user does not have access to',
 it('returns 403 when switching to a workspace in a different organization', function () {
     // workspace2 belongs to org2, but user's current org is org
     $response = $this->actingAs($this->user)
-        ->withoutMiddleware(VerifyCsrfToken::class)
+        ->withoutMiddleware(PreventRequestForgery::class)
         ->post(route('switch-workspace', $this->workspace2));
 
     $response->assertForbidden();
@@ -122,7 +122,7 @@ it('returns 403 when switching organization during impersonation', function () {
     $this->user->impersonating = true;
 
     $response = $this->actingAs($this->user)
-        ->withoutMiddleware(VerifyCsrfToken::class)
+        ->withoutMiddleware(PreventRequestForgery::class)
         ->post(route('switch-organization', $this->org2));
 
     $response->assertForbidden();

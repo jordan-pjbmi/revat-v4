@@ -4,7 +4,7 @@ use App\Models\Admin;
 use App\Models\AuditLog;
 use App\Models\Organization;
 use App\Models\User;
-use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
+use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\URL;
@@ -36,7 +36,7 @@ it('starts impersonation via valid signed URL', function () {
     $path = $parsed['path'].'?'.$parsed['query'];
 
     $response = $this->actingAs($this->admin, 'admin')
-        ->withoutMiddleware(VerifyCsrfToken::class)
+        ->withoutMiddleware(PreventRequestForgery::class)
         ->post($path);
 
     $response->assertRedirect(route('dashboard'));
@@ -50,7 +50,7 @@ it('starts impersonation via valid signed URL', function () {
 
 it('rejects impersonation with invalid signature', function () {
     $response = $this->actingAs($this->admin, 'admin')
-        ->withoutMiddleware(VerifyCsrfToken::class)
+        ->withoutMiddleware(PreventRequestForgery::class)
         ->post('/support/impersonate?admin_id='.$this->admin->id.'&user_id='.$this->user->id.'&organization_id='.$this->organization->id);
 
     $response->assertForbidden();
@@ -70,7 +70,7 @@ it('rejects impersonation when support_access_enabled is false', function () {
     $path = $parsed['path'].'?'.$parsed['query'];
 
     $response = $this->actingAs($this->admin, 'admin')
-        ->withoutMiddleware(VerifyCsrfToken::class)
+        ->withoutMiddleware(PreventRequestForgery::class)
         ->post($path);
 
     $response->assertForbidden();
@@ -139,7 +139,7 @@ it('logs impersonation start and stop via AuditService', function () {
     $path = $parsed['path'].'?'.$parsed['query'];
 
     $this->actingAs($this->admin, 'admin')
-        ->withoutMiddleware(VerifyCsrfToken::class)
+        ->withoutMiddleware(PreventRequestForgery::class)
         ->post($path)
         ->assertRedirect(route('dashboard'));
 
@@ -147,7 +147,7 @@ it('logs impersonation start and stop via AuditService', function () {
 
     // Stop impersonation
     $this->actingAs($this->admin, 'admin')
-        ->withoutMiddleware(VerifyCsrfToken::class)
+        ->withoutMiddleware(PreventRequestForgery::class)
         ->withSession([
             'impersonating_user_id' => $this->user->id,
             'impersonating_admin_id' => $this->admin->id,
@@ -173,7 +173,7 @@ it('validates admin matches signed URL admin_id', function () {
 
     // Authenticate as a different admin
     $response = $this->actingAs($otherAdmin, 'admin')
-        ->withoutMiddleware(VerifyCsrfToken::class)
+        ->withoutMiddleware(PreventRequestForgery::class)
         ->post($path);
 
     $response->assertForbidden();
@@ -200,14 +200,14 @@ it('changes session ID after impersonation start and stop', function () {
 
     // Start - session should regenerate (tested by asserting redirect works)
     $response = $this->actingAs($this->admin, 'admin')
-        ->withoutMiddleware(VerifyCsrfToken::class)
+        ->withoutMiddleware(PreventRequestForgery::class)
         ->post($path);
 
     $response->assertRedirect(route('dashboard'));
 
     // Stop - session should regenerate
     $response = $this->actingAs($this->admin, 'admin')
-        ->withoutMiddleware(VerifyCsrfToken::class)
+        ->withoutMiddleware(PreventRequestForgery::class)
         ->withSession([
             'impersonating_user_id' => $this->user->id,
             'impersonating_admin_id' => $this->admin->id,
@@ -220,7 +220,7 @@ it('changes session ID after impersonation start and stop', function () {
 
 it('stops impersonation and clears session flags', function () {
     $response = $this->actingAs($this->admin, 'admin')
-        ->withoutMiddleware(VerifyCsrfToken::class)
+        ->withoutMiddleware(PreventRequestForgery::class)
         ->withSession([
             'impersonating_user_id' => $this->user->id,
             'impersonating_admin_id' => $this->admin->id,
