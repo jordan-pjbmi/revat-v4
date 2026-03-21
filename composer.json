@@ -17,6 +17,7 @@
         "livewire/flux": "^2.13",
         "livewire/volt": "^1.10",
         "pragmarx/google2fa-laravel": "^3.0",
+        "resend/resend-php": "^1.1",
         "saloonphp/laravel-plugin": "3.9.99",
         "saloonphp/rate-limit-plugin": "^2.4",
         "saloonphp/saloon": "^3.15",
