@@ -7,7 +7,6 @@ use App\Models\CampaignEmailClick;
 use App\Models\CampaignEmailRawData;
 use App\Models\ConversionSale;
 use App\Models\ConversionSaleRawData;
-use App\Models\Effort;
 use App\Models\IdentityHash;
 use App\Models\Integration;
 use App\Models\Workspace;
@@ -24,7 +23,6 @@ class FactTableSeeder extends Seeder
         $workspaces = Workspace::orderBy('id')->get();
 
         foreach ($workspaces as $workspace) {
-            $efforts = Effort::where('workspace_id', $workspace->id)->get();
             $campaignIntegration = Integration::where('workspace_id', $workspace->id)
                 ->where('platform', 'activecampaign')
                 ->first();
@@ -46,14 +44,12 @@ class FactTableSeeder extends Seeder
             $campaigns = collect();
             for ($i = 0; $i < 20; $i++) {
                 $sentAt = now()->subDays(fake()->numberBetween(1, 30));
-                $effort = $efforts->isNotEmpty() ? $efforts->random() : null;
                 $rawData = $rawCampaigns->get($i);
 
                 $campaign = CampaignEmail::create([
                     'workspace_id' => $workspace->id,
                     'raw_data_id' => $rawData?->id,
                     'integration_id' => $campaignIntegration?->id,
-                    'effort_id' => $effort?->id,
                     'external_id' => "camp-{$workspace->id}-{$i}",
                     'name' => fake()->words(3, true),
                     'subject' => fake()->sentence(),
