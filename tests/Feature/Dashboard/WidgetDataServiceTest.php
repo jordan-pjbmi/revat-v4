@@ -114,7 +114,7 @@ beforeEach(function () {
 
 it('fetchMetric returns correct structure', function () {
     $result = $this->service->fetchMetric(
-        ['source' => 'campaign_metrics', 'measure' => 'sent'],
+        ['data_source' => 'campaign_metrics', 'measure' => 'sent'],
         $this->start,
         $this->end,
     );
@@ -126,7 +126,7 @@ it('fetchMetric returns correct structure', function () {
 
 it('fetchMetric sums values over the date range', function () {
     $result = $this->service->fetchMetric(
-        ['source' => 'campaign_metrics', 'measure' => 'sent'],
+        ['data_source' => 'campaign_metrics', 'measure' => 'sent'],
         $this->start,
         $this->end,
     );
@@ -137,7 +137,7 @@ it('fetchMetric sums values over the date range', function () {
 
 it('fetchMetric uses conversions_count column for conversions measure', function () {
     $result = $this->service->fetchMetric(
-        ['source' => 'conversion_metrics', 'measure' => 'conversions'],
+        ['data_source' => 'conversion_metrics', 'measure' => 'conversions'],
         $this->start,
         $this->end,
     );
@@ -149,7 +149,7 @@ it('fetchMetric uses conversions_count column for conversions measure', function
 
 it('fetchMetric uses platform_revenue column for platform_breakdown revenue', function () {
     $result = $this->service->fetchMetric(
-        ['source' => 'platform_breakdown', 'measure' => 'revenue'],
+        ['data_source' => 'platform_breakdown', 'measure' => 'revenue'],
         $this->start,
         $this->end,
     );
@@ -160,7 +160,7 @@ it('fetchMetric uses platform_revenue column for platform_breakdown revenue', fu
 
 it('fetchMetric calculates previous period comparison', function () {
     $result = $this->service->fetchMetric(
-        ['source' => 'campaign_metrics', 'measure' => 'sent'],
+        ['data_source' => 'campaign_metrics', 'measure' => 'sent'],
         $this->start,
         $this->end,
     );
@@ -172,7 +172,7 @@ it('fetchMetric calculates previous period comparison', function () {
 
 it('fetchMetric computes open_rate correctly', function () {
     $result = $this->service->fetchMetric(
-        ['source' => 'campaign_metrics', 'measure' => 'open_rate'],
+        ['data_source' => 'campaign_metrics', 'measure' => 'open_rate'],
         $this->start,
         $this->end,
     );
@@ -184,7 +184,7 @@ it('fetchMetric computes open_rate correctly', function () {
 
 it('fetchMetric computes click_rate correctly', function () {
     $result = $this->service->fetchMetric(
-        ['source' => 'campaign_metrics', 'measure' => 'click_rate'],
+        ['data_source' => 'campaign_metrics', 'measure' => 'click_rate'],
         $this->start,
         $this->end,
     );
@@ -196,7 +196,7 @@ it('fetchMetric computes click_rate correctly', function () {
 
 it('fetchMetric computes roas correctly', function () {
     $result = $this->service->fetchMetric(
-        ['source' => 'conversion_metrics', 'measure' => 'roas'],
+        ['data_source' => 'conversion_metrics', 'measure' => 'roas'],
         $this->start,
         $this->end,
     );
@@ -210,7 +210,7 @@ it('fetchMetric computes roas correctly', function () {
 
 it('fetchTrend returns correct structure', function () {
     $result = $this->service->fetchTrend(
-        ['source' => 'campaign_metrics', 'measure' => 'sent'],
+        ['data_source' => 'campaign_metrics', 'measure' => 'sent'],
         $this->start,
         $this->end,
     );
@@ -222,7 +222,7 @@ it('fetchTrend returns correct structure', function () {
 
 it('fetchTrend returns daily labels for the date range', function () {
     $result = $this->service->fetchTrend(
-        ['source' => 'campaign_metrics', 'measure' => 'sent'],
+        ['data_source' => 'campaign_metrics', 'measure' => 'sent'],
         $this->start,
         $this->end,
     );
@@ -235,7 +235,7 @@ it('fetchTrend returns daily labels for the date range', function () {
 it('fetchTrend backfills missing dates with zero', function () {
     // Query a range outside our seeded data
     $result = $this->service->fetchTrend(
-        ['source' => 'campaign_metrics', 'measure' => 'sent'],
+        ['data_source' => 'campaign_metrics', 'measure' => 'sent'],
         Carbon::parse('2026-02-28'),
         Carbon::parse('2026-03-02'),
     );
@@ -248,7 +248,7 @@ it('fetchTrend backfills missing dates with zero', function () {
 
 it('fetchTrend returns correct data for each day', function () {
     $result = $this->service->fetchTrend(
-        ['source' => 'campaign_metrics', 'measure' => 'sent'],
+        ['data_source' => 'campaign_metrics', 'measure' => 'sent'],
         $this->start,
         $this->end,
     );
@@ -261,7 +261,7 @@ it('fetchTrend returns correct data for each day', function () {
 
 it('fetchTrend computes open_rate per day', function () {
     $result = $this->service->fetchTrend(
-        ['source' => 'campaign_metrics', 'measure' => 'open_rate'],
+        ['data_source' => 'campaign_metrics', 'measure' => 'open_rate'],
         $this->start,
         Carbon::parse('2026-03-02'),
     );
@@ -276,7 +276,7 @@ it('fetchTrend computes open_rate per day', function () {
 
 it('fetchGrouped returns correct structure', function () {
     $result = $this->service->fetchGrouped(
-        ['source' => 'campaign_metrics', 'measure' => 'sent', 'group_by' => 'summary_date'],
+        ['data_source' => 'campaign_metrics', 'measure' => 'sent', 'group_by' => 'summary_date'],
         $this->start,
         $this->end,
     );
@@ -288,7 +288,7 @@ it('fetchGrouped returns correct structure', function () {
 
 it('fetchGrouped groups by summary_date', function () {
     $result = $this->service->fetchGrouped(
-        ['source' => 'campaign_metrics', 'measure' => 'sent', 'group_by' => 'summary_date'],
+        ['data_source' => 'campaign_metrics', 'measure' => 'sent', 'group_by' => 'summary_date'],
         $this->start,
         $this->end,
     );
@@ -298,7 +298,7 @@ it('fetchGrouped groups by summary_date', function () {
 
 it('fetchGrouped applies limit', function () {
     $result = $this->service->fetchGrouped(
-        ['source' => 'campaign_metrics', 'measure' => 'sent', 'group_by' => 'summary_date', 'limit' => 3],
+        ['data_source' => 'campaign_metrics', 'measure' => 'sent', 'group_by' => 'summary_date', 'limit' => 3],
         $this->start,
         $this->end,
     );
@@ -309,7 +309,7 @@ it('fetchGrouped applies limit', function () {
 
 it('fetchGrouped groups by platform for platform_breakdown', function () {
     $result = $this->service->fetchGrouped(
-        ['source' => 'platform_breakdown', 'measure' => 'sent', 'group_by' => 'platform'],
+        ['data_source' => 'platform_breakdown', 'measure' => 'sent', 'group_by' => 'platform'],
         $this->start,
         $this->end,
     );
@@ -321,7 +321,7 @@ it('fetchGrouped groups by platform for platform_breakdown', function () {
 
 it('fetchGrouped computed open_rate returns rates not totals', function () {
     $result = $this->service->fetchGrouped(
-        ['source' => 'campaign_metrics', 'measure' => 'open_rate', 'group_by' => 'summary_date', 'limit' => 1],
+        ['data_source' => 'campaign_metrics', 'measure' => 'open_rate', 'group_by' => 'summary_date', 'limit' => 1],
         $this->start,
         $this->end,
     );
@@ -335,7 +335,7 @@ it('fetchGrouped computed open_rate returns rates not totals', function () {
 
 it('fetchTable returns correct structure', function () {
     $result = $this->service->fetchTable(
-        ['source' => 'campaign_metrics'],
+        ['data_source' => 'campaign_metrics'],
         $this->start,
         $this->end,
     );
@@ -345,7 +345,7 @@ it('fetchTable returns correct structure', function () {
 
 it('fetchTable only returns non-computed measures', function () {
     $result = $this->service->fetchTable(
-        ['source' => 'campaign_metrics'],
+        ['data_source' => 'campaign_metrics'],
         $this->start,
         $this->end,
     );
@@ -360,7 +360,7 @@ it('fetchTable only returns non-computed measures', function () {
 
 it('fetchTable includes columns metadata with format', function () {
     $result = $this->service->fetchTable(
-        ['source' => 'conversion_metrics'],
+        ['data_source' => 'conversion_metrics'],
         $this->start,
         $this->end,
     );
@@ -377,7 +377,7 @@ it('fetchTable includes columns metadata with format', function () {
 
 it('fetchTable rows have date and measure values', function () {
     $result = $this->service->fetchTable(
-        ['source' => 'campaign_metrics'],
+        ['data_source' => 'campaign_metrics'],
         $this->start,
         $this->end,
     );
@@ -390,7 +390,7 @@ it('fetchTable rows have date and measure values', function () {
 
 it('fetchTable totals sum all rows', function () {
     $result = $this->service->fetchTable(
-        ['source' => 'campaign_metrics'],
+        ['data_source' => 'campaign_metrics'],
         $this->start,
         $this->end,
     );
@@ -402,7 +402,7 @@ it('fetchTable totals sum all rows', function () {
 
 it('fetchTable conversion_metrics uses conversions_count column', function () {
     $result = $this->service->fetchTable(
-        ['source' => 'conversion_metrics'],
+        ['data_source' => 'conversion_metrics'],
         $this->start,
         $this->end,
     );
@@ -415,7 +415,7 @@ it('fetchTable conversion_metrics uses conversions_count column', function () {
 
 it('fetchTable respects limit', function () {
     $result = $this->service->fetchTable(
-        ['source' => 'campaign_metrics', 'limit' => 3],
+        ['data_source' => 'campaign_metrics', 'limit' => 3],
         $this->start,
         $this->end,
     );
@@ -427,7 +427,7 @@ it('fetchTable respects limit', function () {
 
 it('fetchMetric excludes data from other workspaces', function () {
     $result = $this->service->fetchMetric(
-        ['source' => 'campaign_metrics', 'measure' => 'sent'],
+        ['data_source' => 'campaign_metrics', 'measure' => 'sent'],
         $this->start,
         $this->end,
     );
@@ -438,7 +438,7 @@ it('fetchMetric excludes data from other workspaces', function () {
 
 it('fetchTrend excludes data from other workspaces', function () {
     $result = $this->service->fetchTrend(
-        ['source' => 'campaign_metrics', 'measure' => 'sent'],
+        ['data_source' => 'campaign_metrics', 'measure' => 'sent'],
         $this->start,
         $this->end,
     );
@@ -451,7 +451,7 @@ it('fetchTrend excludes data from other workspaces', function () {
 
 it('fetchTable excludes data from other workspaces', function () {
     $result = $this->service->fetchTable(
-        ['source' => 'campaign_metrics'],
+        ['data_source' => 'campaign_metrics'],
         $this->start,
         $this->end,
     );
@@ -464,7 +464,7 @@ it('fetchMetric returns zeros for empty workspace', function () {
     $emptyService = WidgetDataService::forWorkspace($this->otherWorkspace->id + 9999);
 
     $result = $emptyService->fetchMetric(
-        ['source' => 'campaign_metrics', 'measure' => 'sent'],
+        ['data_source' => 'campaign_metrics', 'measure' => 'sent'],
         $this->start,
         $this->end,
     );

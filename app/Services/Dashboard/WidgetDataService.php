@@ -22,12 +22,12 @@ class WidgetDataService
     /**
      * Fetch a single aggregated metric with previous period comparison.
      *
-     * @param  array<string, mixed>  $config  Must include keys: source, measure
+     * @param  array<string, mixed>  $config  Must include keys: data_source, measure
      * @return array{value: float, previous: float, change: float, format: string, label: string}
      */
     public function fetchMetric(array $config, Carbon $start, Carbon $end): array
     {
-        $source = DataSourceRegistry::get($config['source']);
+        $source = DataSourceRegistry::get($config['data_source']);
         $measureKey = $config['measure'];
         $measureDef = $source['measures'][$measureKey] ?? [];
         $format = $measureDef['format'] ?? 'number';
@@ -58,7 +58,7 @@ class WidgetDataService
      */
     public function fetchTrend(array $config, Carbon $start, Carbon $end): array
     {
-        $source = DataSourceRegistry::get($config['source']);
+        $source = DataSourceRegistry::get($config['data_source']);
         $measureKey = $config['measure'];
         $measureDef = $source['measures'][$measureKey] ?? [];
         $label = $measureDef['label'] ?? $measureKey;
@@ -98,7 +98,7 @@ class WidgetDataService
      */
     public function fetchGrouped(array $config, Carbon $start, Carbon $end): array
     {
-        $source = DataSourceRegistry::get($config['source']);
+        $source = DataSourceRegistry::get($config['data_source']);
         $measureKey = $config['measure'];
         $measureDef = $source['measures'][$measureKey] ?? [];
         $label = $measureDef['label'] ?? $measureKey;
@@ -146,7 +146,7 @@ class WidgetDataService
      */
     public function fetchTable(array $config, Carbon $start, Carbon $end): array
     {
-        $source = DataSourceRegistry::get($config['source']);
+        $source = DataSourceRegistry::get($config['data_source']);
         $allMeasures = $source['measures'];
         $model = $source['summary_model'];
 

@@ -1,0 +1,217 @@
+<h2>Section 6: Widget Configuration Panel</h2>
+<p class="subtitle">The side panel that opens when adding or editing a widget. Two modes: curated (default) and advanced.</p>
+
+<div class="split" style="gap: 2rem; align-items: start;">
+
+  <!-- Curated Mode -->
+  <div class="mockup">
+    <div class="mockup-header">Curated Mode (Default View)</div>
+    <div class="mockup-body" style="padding: 0;">
+
+      <!-- Panel header -->
+      <div style="padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+        <span style="font-weight: 600; font-size: 1.1rem;">Add Widget</span>
+        <span style="opacity: 0.5; cursor: pointer;">✕</span>
+      </div>
+
+      <!-- Search -->
+      <div style="padding: 0.75rem 1.25rem;">
+        <div class="mock-input" style="margin: 0; font-size: 0.85rem;">🔍 Search widgets...</div>
+      </div>
+
+      <!-- Category: Key Metrics -->
+      <div style="padding: 0 1.25rem;">
+        <div class="label" style="margin-bottom: 0.5rem; color: var(--muted);">Key Metrics</div>
+
+        <div style="border: 1px solid var(--border); border-radius: 8px; padding: 0.75rem 1rem; margin-bottom: 0.5rem; cursor: pointer; transition: border-color 0.2s;" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+          <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <span style="font-size: 1.2rem;">🔢</span>
+            <div>
+              <div style="font-weight: 500; font-size: 0.9rem;">Single Metric</div>
+              <div style="font-size: 0.75rem; opacity: 0.6;">Big number with trend arrow</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="border: 1px solid var(--border); border-radius: 8px; padding: 0.75rem 1rem; margin-bottom: 0.5rem; cursor: pointer; transition: border-color 0.2s;" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+          <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <span style="font-size: 1.2rem;">📊</span>
+            <div>
+              <div style="font-weight: 500; font-size: 0.9rem;">Stat Row</div>
+              <div style="font-size: 0.75rem; opacity: 0.6;">Row of 3-5 metrics with trends</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Category: Charts -->
+      <div style="padding: 0.75rem 1.25rem 0;">
+        <div class="label" style="margin-bottom: 0.5rem; color: var(--muted);">Charts</div>
+
+        <div style="border: 1px solid var(--border); border-radius: 8px; padding: 0.75rem 1rem; margin-bottom: 0.5rem; cursor: pointer; transition: border-color 0.2s;" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+          <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <span style="font-size: 1.2rem;">📈</span>
+            <div>
+              <div style="font-weight: 500; font-size: 0.9rem;">Line Chart</div>
+              <div style="font-size: 0.75rem; opacity: 0.6;">Trend over time</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="border: 1px solid var(--border); border-radius: 8px; padding: 0.75rem 1rem; margin-bottom: 0.5rem; cursor: pointer; transition: border-color 0.2s;" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+          <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <span style="font-size: 1.2rem;">📊</span>
+            <div>
+              <div style="font-weight: 500; font-size: 0.9rem;">Bar Chart</div>
+              <div style="font-size: 0.75rem; opacity: 0.6;">Compare values across categories</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="border: 1px solid var(--border); border-radius: 8px; padding: 0.75rem 1rem; margin-bottom: 0.5rem; cursor: pointer; transition: border-color 0.2s;" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+          <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <span style="font-size: 1.2rem;">🥧</span>
+            <div>
+              <div style="font-weight: 500; font-size: 0.9rem;">Pie / Donut</div>
+              <div style="font-size: 0.75rem; opacity: 0.6;">Show proportions</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Category: Data -->
+      <div style="padding: 0.75rem 1.25rem 0;">
+        <div class="label" style="margin-bottom: 0.5rem; color: var(--muted);">Data</div>
+
+        <div style="border: 1px solid var(--border); border-radius: 8px; padding: 0.75rem 1rem; margin-bottom: 0.5rem; cursor: pointer; transition: border-color 0.2s;" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+          <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <span style="font-size: 1.2rem;">📋</span>
+            <div>
+              <div style="font-weight: 500; font-size: 0.9rem;">Data Table</div>
+              <div style="font-size: 0.75rem; opacity: 0.6;">Sortable tabular breakdown</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Advanced toggle -->
+      <div style="padding: 1.25rem; border-top: 1px solid var(--border); margin-top: 1rem;">
+        <div style="font-size: 0.85rem; color: var(--accent); cursor: pointer;">▸ Advanced Configuration</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Advanced Mode -->
+  <div class="mockup">
+    <div class="mockup-header">Advanced Mode (Expanded)</div>
+    <div class="mockup-body" style="padding: 0;">
+
+      <!-- Panel header -->
+      <div style="padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+        <span style="font-weight: 600; font-size: 1.1rem;">Configure Widget</span>
+        <span style="opacity: 0.5; cursor: pointer;">✕</span>
+      </div>
+
+      <!-- Display section -->
+      <div style="padding: 1rem 1.25rem;">
+        <div class="label" style="margin-bottom: 0.75rem;">Display</div>
+        <div style="margin-bottom: 0.75rem;">
+          <div style="font-size: 0.75rem; opacity: 0.7; margin-bottom: 0.25rem;">Title</div>
+          <div class="mock-input" style="margin: 0; font-size: 0.85rem;">Revenue by Channel</div>
+        </div>
+        <div style="margin-bottom: 0.75rem;">
+          <div style="font-size: 0.75rem; opacity: 0.7; margin-bottom: 0.25rem;">Subtitle (optional)</div>
+          <div class="mock-input" style="margin: 0; font-size: 0.85rem; opacity: 0.5;">Top performers</div>
+        </div>
+      </div>
+
+      <!-- Data Source section -->
+      <div style="padding: 0 1.25rem 1rem;">
+        <div class="label" style="margin-bottom: 0.75rem;">Data Source</div>
+        <div style="margin-bottom: 0.75rem;">
+          <div style="font-size: 0.75rem; opacity: 0.7; margin-bottom: 0.25rem;">Source</div>
+          <div style="border: 1px solid var(--border); border-radius: 6px; padding: 0.5rem 0.75rem; font-size: 0.85rem; display: flex; justify-content: space-between;">
+            <span>Conversion Metrics</span>
+            <span style="opacity: 0.4;">▾</span>
+          </div>
+        </div>
+        <div style="margin-bottom: 0.75rem;">
+          <div style="font-size: 0.75rem; opacity: 0.7; margin-bottom: 0.25rem;">Measure</div>
+          <div style="border: 1px solid var(--border); border-radius: 6px; padding: 0.5rem 0.75rem; font-size: 0.85rem; display: flex; justify-content: space-between;">
+            <span>Revenue</span>
+            <span style="opacity: 0.4;">▾</span>
+          </div>
+        </div>
+        <div style="margin-bottom: 0.75rem;">
+          <div style="font-size: 0.75rem; opacity: 0.7; margin-bottom: 0.25rem;">Group By</div>
+          <div style="border: 1px solid var(--border); border-radius: 6px; padding: 0.5rem 0.75rem; font-size: 0.85rem; display: flex; justify-content: space-between;">
+            <span>Campaign</span>
+            <span style="opacity: 0.4;">▾</span>
+          </div>
+        </div>
+        <div>
+          <div style="font-size: 0.75rem; opacity: 0.7; margin-bottom: 0.25rem;">Limit</div>
+          <div class="mock-input" style="margin: 0; font-size: 0.85rem; width: 4rem;">10</div>
+        </div>
+      </div>
+
+      <!-- Visualization section -->
+      <div style="padding: 0 1.25rem 1rem;">
+        <div class="label" style="margin-bottom: 0.75rem;">Visualization</div>
+        <div style="margin-bottom: 0.75rem;">
+          <div style="font-size: 0.75rem; opacity: 0.7; margin-bottom: 0.25rem;">Type</div>
+          <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+            <div style="border: 2px solid var(--accent); border-radius: 6px; padding: 0.4rem 0.75rem; font-size: 0.8rem; background: rgba(99,102,241,0.1);">Bar</div>
+            <div style="border: 1px solid var(--border); border-radius: 6px; padding: 0.4rem 0.75rem; font-size: 0.8rem;">H. Bar</div>
+            <div style="border: 1px solid var(--border); border-radius: 6px; padding: 0.4rem 0.75rem; font-size: 0.8rem;">Stacked</div>
+          </div>
+        </div>
+        <div style="display: flex; gap: 1rem;">
+          <label style="font-size: 0.8rem; display: flex; align-items: center; gap: 0.35rem;">
+            <input type="checkbox" checked> Labels
+          </label>
+          <label style="font-size: 0.8rem; display: flex; align-items: center; gap: 0.35rem;">
+            <input type="checkbox"> Legend
+          </label>
+        </div>
+      </div>
+
+      <!-- Filters section -->
+      <div style="padding: 0 1.25rem 1rem;">
+        <div class="label" style="margin-bottom: 0.75rem;">Filters</div>
+        <div style="border: 1px solid var(--border); border-radius: 6px; padding: 0.5rem 0.75rem; margin-bottom: 0.5rem; font-size: 0.8rem; display: flex; justify-content: space-between; align-items: center;">
+          <span>platform <strong>in</strong> google, meta</span>
+          <span style="opacity: 0.4; cursor: pointer;">✕</span>
+        </div>
+        <div style="font-size: 0.8rem; color: var(--accent); cursor: pointer;">+ Add Filter</div>
+      </div>
+
+      <!-- Date override -->
+      <div style="padding: 0 1.25rem 1rem;">
+        <div class="label" style="margin-bottom: 0.75rem;">Date Range</div>
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+          <div style="border: 2px solid var(--accent); border-radius: 6px; padding: 0.4rem 0.75rem; font-size: 0.8rem; background: rgba(99,102,241,0.1);">Use Global</div>
+          <div style="border: 1px solid var(--border); border-radius: 6px; padding: 0.4rem 0.75rem; font-size: 0.8rem;">Fixed Range</div>
+        </div>
+      </div>
+
+      <!-- Action buttons -->
+      <div style="padding: 1rem 1.25rem; border-top: 1px solid var(--border); display: flex; gap: 0.75rem;">
+        <button class="mock-button" style="flex: 1; background: var(--accent); color: white; border-color: var(--accent);">Add to Dashboard</button>
+        <button class="mock-button" style="opacity: 0.6;">Cancel</button>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<div style="margin-top: 2rem;">
+  <h3>Flow</h3>
+  <p style="font-size: 0.9rem; line-height: 1.6;">
+    <strong>Adding a widget (curated):</strong> Click widget type in catalog → panel switches to configuration form pre-filled with sensible defaults for that type → user adjusts title/measure if needed → "Add to Dashboard" places it at the bottom of the grid.<br><br>
+    <strong>Adding a widget (advanced):</strong> Click "Advanced Configuration" toggle → full form appears with all data source, visualization, and filter options → user builds custom widget from scratch.<br><br>
+    <strong>Editing existing widget:</strong> Click gear icon on widget → same panel opens pre-filled with current config → changes save on "Update Widget."
+  </p>
+</div>
