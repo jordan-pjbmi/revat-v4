@@ -14,8 +14,8 @@ it('returns measures for a data source', function () {
 });
 
 it('returns dimensions for a data source', function () {
-    $dimensions = DataSourceRegistry::dimensionsFor('campaign_metrics');
-    expect($dimensions)->toBe(['platform', 'campaign']);
+    $dimensions = DataSourceRegistry::dimensionsFor('platform_breakdown');
+    expect($dimensions)->toBe(['platform']);
 });
 
 it('all data sources reference valid model classes', function () {

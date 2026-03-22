@@ -39,6 +39,8 @@ abstract class TestCase extends BaseTestCase
 
         $this->actingAs($user);
 
+        $organization = $org;
+
         return compact('user', 'organization', 'workspace');
     }
 

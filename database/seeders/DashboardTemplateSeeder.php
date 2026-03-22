@@ -75,12 +75,12 @@ class DashboardTemplateSeeder extends Seeder
                         'grid_h' => 4,
                         'sort_order' => 3,
                         'config' => [
-                            'data_source' => 'conversion_metrics',
+                            'data_source' => 'platform_breakdown',
                             'measure' => 'revenue',
-                            'group_by' => 'campaign',
+                            'group_by' => 'platform',
                             'limit' => 10,
                             'visualization' => ['chart_type' => 'horizontal_bar'],
-                            'display' => ['title' => 'Top Campaigns by Revenue'],
+                            'display' => ['title' => 'Revenue by Platform'],
                         ],
                     ],
                     [
@@ -157,12 +157,12 @@ class DashboardTemplateSeeder extends Seeder
                         'grid_h' => 4,
                         'sort_order' => 2,
                         'config' => [
-                            'data_source' => 'campaign_metrics',
-                            'measure' => 'open_rate',
-                            'group_by' => 'campaign',
+                            'data_source' => 'platform_breakdown',
+                            'measure' => 'sent',
+                            'group_by' => 'platform',
                             'limit' => 10,
                             'visualization' => ['chart_type' => 'bar'],
-                            'display' => ['title' => 'Open Rate by Campaign'],
+                            'display' => ['title' => 'Sends by Platform'],
                         ],
                     ],
                     [
@@ -228,7 +228,7 @@ class DashboardTemplateSeeder extends Seeder
                         'config' => [
                             'data_source' => 'attribution',
                             'measure' => 'attributed_revenue',
-                            'group_by' => 'effort',
+                            'group_by' => 'effort_id',
                             'limit' => 10,
                             'visualization' => ['chart_type' => 'horizontal_bar'],
                             'display' => ['title' => 'First Touch Attribution'],
@@ -245,7 +245,7 @@ class DashboardTemplateSeeder extends Seeder
                         'config' => [
                             'data_source' => 'attribution',
                             'measure' => 'attributed_revenue',
-                            'group_by' => 'effort',
+                            'group_by' => 'effort_id',
                             'limit' => 10,
                             'visualization' => ['chart_type' => 'horizontal_bar'],
                             'display' => ['title' => 'Last Touch Attribution'],
@@ -274,7 +274,7 @@ class DashboardTemplateSeeder extends Seeder
                         'config' => [
                             'data_source' => 'attribution',
                             'measure' => 'attributed_revenue',
-                            'group_by' => 'effort',
+                            'group_by' => 'effort_id',
                             'visualization' => ['chart_type' => 'donut', 'show_legend' => true],
                             'display' => ['title' => 'Attribution Distribution'],
                         ],

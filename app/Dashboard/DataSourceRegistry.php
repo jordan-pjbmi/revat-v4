@@ -21,7 +21,7 @@ class DataSourceRegistry
                 'open_rate' => ['label' => 'Open Rate', 'format' => 'percent', 'computed' => true],
                 'click_rate' => ['label' => 'Click Rate', 'format' => 'percent', 'computed' => true],
             ],
-            'dimensions' => ['platform', 'campaign'],
+            'dimensions' => [],
             'supports_trend' => true,
         ],
         'conversion_metrics' => [
@@ -34,7 +34,7 @@ class DataSourceRegistry
                 'cost' => ['label' => 'Cost', 'format' => 'currency'],
                 'roas' => ['label' => 'ROAS', 'format' => 'decimal', 'computed' => true],
             ],
-            'dimensions' => ['platform', 'campaign'],
+            'dimensions' => [],
             'supports_trend' => true,
         ],
         'attribution' => [
@@ -46,7 +46,7 @@ class DataSourceRegistry
                 'attributed_revenue' => ['label' => 'Attributed Revenue', 'format' => 'currency'],
                 'weight' => ['label' => 'Weight', 'format' => 'decimal', 'column' => 'total_weight'],
             ],
-            'dimensions' => ['effort', 'model'],
+            'dimensions' => ['effort_id', 'model'],
             'supports_trend' => true,
             'extra_config' => [
                 'attribution_model' => [
