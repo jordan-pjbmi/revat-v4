@@ -18,6 +18,8 @@ new class extends Component
 
     public bool $showVersionHistory = false;
 
+    public bool $activeDashboardLocked = false;
+
     /** @var array<int, array{id: int, name: string}> */
     public array $dashboards = [];
 
@@ -114,6 +116,7 @@ new class extends Component
         if ($dashboard) {
             $this->activeDashboardId = $dashboard->id;
             $this->activeDashboardName = $dashboard->name;
+            $this->activeDashboardLocked = (bool) $dashboard->is_locked;
             $this->showTemplates = false;
             $this->showVersionHistory = false;
         }
@@ -198,8 +201,11 @@ new class extends Component
             {{-- Page Header --}}
             <div class="flex justify-between items-start mb-6">
                 <div class="flex items-center gap-4">
-                    <div>
+                    <div class="flex items-center gap-2">
                         <h1 class="text-[22px] font-bold text-slate-900 dark:text-white">{{ $activeDashboardName }}</h1>
+                        @if ($activeDashboardLocked)
+                            <flux:icon.lock-closed class="w-4 h-4 text-slate-400 dark:text-slate-500" title="Dashboard is locked" />
+                        @endif
                     </div>
 
                     @if (count($dashboards) > 1)
@@ -239,7 +245,7 @@ new class extends Component
                         @if ($editing)
                             <flux:button size="sm" variant="primary" wire:click="exitEditMode">Done</flux:button>
                             <flux:button size="sm" variant="ghost" wire:click="exitEditMode">Cancel</flux:button>
-                        @else
+                        @elseif (! $activeDashboardLocked || auth()->user()->can('manage'))
                             <flux:button size="sm" variant="ghost" wire:click="enterEditMode" icon="pencil-square">
                                 Customize
                             </flux:button>
@@ -264,10 +270,10 @@ new class extends Component
 
             {{-- Version History Modal --}}
             <flux:modal name="version-history" :show="$showVersionHistory" wire:close="closeVersionHistory" class="max-w-lg">
-                <flux:modal.header>
+                <div class="mb-4">
                     <flux:heading size="lg">Version History</flux:heading>
                     <flux:subheading>Restore the dashboard to a previous snapshot.</flux:subheading>
-                </flux:modal.header>
+                </div>
 
                 <div class="divide-y divide-slate-100 dark:divide-slate-700">
                     @forelse ($this->snapshots as $snapshot)
