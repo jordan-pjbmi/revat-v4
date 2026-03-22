@@ -3,6 +3,7 @@
 namespace App\Livewire\Dashboard\Widgets;
 
 use App\Services\Dashboard\WidgetDataService;
+use App\Services\WorkspaceContext;
 use Carbon\Carbon;
 use Illuminate\View\View;
 use Livewire\Attributes\Lazy;
@@ -63,7 +64,7 @@ abstract class BaseWidget extends Component
 
     protected function getDataService(): WidgetDataService
     {
-        $workspaceId = session('workspace_id');
+        $workspaceId = app(WorkspaceContext::class)->getWorkspace()?->id;
 
         return WidgetDataService::forWorkspace($workspaceId);
     }
