@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\BillingController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ImpersonationController;
 use App\Http\Controllers\StripeWebhookController;
 use App\Http\Controllers\SwitchOrganizationController;
@@ -34,6 +35,36 @@ Route::get('/admin/two-factor-challenge', function () {
 Route::middleware(['auth', 'verified', 'onboarded', 'organization', 'workspace'])->group(function () {
     Route::get('/dashboard', fn () => view('pages.dashboard'))
         ->name('dashboard');
+
+    // Dashboard import routes (before {dashboard} wildcard)
+    Route::get('/dashboard/import/{token}', [DashboardController::class, 'showImport'])
+        ->name('dashboard.import.show');
+    Route::post('/dashboard/import/{token}', [DashboardController::class, 'import'])
+        ->middleware('can:integrate')
+        ->name('dashboard.import');
+
+    // Dashboard CRUD
+    Route::post('/dashboard', [DashboardController::class, 'store'])
+        ->middleware('can:integrate')
+        ->name('dashboard.store');
+    Route::put('/dashboard/{dashboard}', [DashboardController::class, 'update'])
+        ->middleware('can:integrate')
+        ->name('dashboard.update');
+    Route::delete('/dashboard/{dashboard}', [DashboardController::class, 'destroy'])
+        ->middleware('can:manage')
+        ->name('dashboard.destroy');
+    Route::post('/dashboard/{dashboard}/lock', [DashboardController::class, 'toggleLock'])
+        ->middleware('can:manage')
+        ->name('dashboard.toggle-lock');
+    Route::post('/dashboard/{dashboard}/export', [DashboardController::class, 'export'])
+        ->middleware('can:integrate')
+        ->name('dashboard.export');
+    Route::post('/dashboard/{dashboard}/restore/{snapshot}', [DashboardController::class, 'restore'])
+        ->middleware('can:integrate')
+        ->name('dashboard.restore');
+    Route::delete('/dashboard/export/{dashboardExport}', [DashboardController::class, 'revokeExport'])
+        ->middleware('can:integrate')
+        ->name('dashboard.export.revoke');
 
     Route::get('/reports', fn () => view('pages.reports.index'))
         ->name('reports')

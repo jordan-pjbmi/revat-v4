@@ -1,8 +1,11 @@
 <?php
 
+use App\Models\Dashboard;
 use App\Models\Organization;
 use App\Models\User;
+use App\Models\UserDashboardPreference;
 use App\Models\Workspace;
+use App\Services\WorkspaceContext;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Spatie\Permission\PermissionRegistrar;
 
@@ -28,35 +31,53 @@ beforeEach(function () {
     $this->user->assignRole('owner');
 });
 
-it('renders dashboard page successfully', function () {
-    $this->actingAs($this->user)
-        ->get(route('dashboard'))
+it('renders template selection when no dashboards exist', function () {
+    $this->actingAs($this->user);
+    app(WorkspaceContext::class)->setWorkspace($this->workspace);
+
+    $this->get(route('dashboard'))
         ->assertOk()
-        ->assertSee('Dashboard')
-        ->assertSee('Overview of your marketing performance');
+        ->assertSee('Create Your Dashboard')
+        ->assertSee('Executive Overview')
+        ->assertSee('Campaign Manager')
+        ->assertSee('Attribution Analyst')
+        ->assertSee('Start from scratch');
 });
 
-it('dashboard page contains revenue chart section', function () {
-    $this->actingAs($this->user)
-        ->get(route('dashboard'))
+it('renders active dashboard when one exists', function () {
+    $this->actingAs($this->user);
+    app(WorkspaceContext::class)->setWorkspace($this->workspace);
+
+    $dashboard = Dashboard::create([
+        'workspace_id' => $this->workspace->id,
+        'created_by' => $this->user->id,
+        'name' => 'My Custom Dashboard',
+    ]);
+
+    UserDashboardPreference::create([
+        'user_id' => $this->user->id,
+        'workspace_id' => $this->workspace->id,
+        'active_dashboard_id' => $dashboard->id,
+    ]);
+
+    $this->get(route('dashboard'))
         ->assertOk()
-        ->assertSee('Revenue');
+        ->assertSee('My Custom Dashboard');
 });
 
-it('dashboard page contains time range buttons', function () {
-    $this->actingAs($this->user)
-        ->get(route('dashboard'))
-        ->assertOk()
-        ->assertSee('7d')
-        ->assertSee('30d')
-        ->assertSee('90d');
-});
+it('shows first dashboard when no preference exists', function () {
+    $this->actingAs($this->user);
+    app(WorkspaceContext::class)->setWorkspace($this->workspace);
 
-it('dashboard with no data does not error', function () {
-    $this->actingAs($this->user)
-        ->get(route('dashboard'))
+    Dashboard::create([
+        'workspace_id' => $this->workspace->id,
+        'created_by' => $this->user->id,
+        'name' => 'First Dashboard',
+    ]);
+
+    $this->get(route('dashboard'))
         ->assertOk()
-        ->assertSee('Campaign Performance');
+        ->assertSee('First Dashboard');
 });
 
 it('requires authentication', function () {

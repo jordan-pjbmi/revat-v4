@@ -41,6 +41,11 @@ class Workspace extends Model
         return $this->hasMany(Integration::class);
     }
 
+    public function dashboards(): HasMany
+    {
+        return $this->hasMany(Dashboard::class)->where('is_template', false);
+    }
+
     public function scopeDefault($query)
     {
         return $query->where('is_default', true);
