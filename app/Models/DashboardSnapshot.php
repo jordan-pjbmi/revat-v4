@@ -2,11 +2,14 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class DashboardSnapshot extends Model
 {
+    use HasFactory;
+
     public $timestamps = false;
 
     protected $fillable = [
@@ -17,11 +20,14 @@ class DashboardSnapshot extends Model
         'created_at',
     ];
 
-    protected $casts = [
-        'layout' => 'array',
-        'widget_count' => 'integer',
-        'created_at' => 'datetime',
-    ];
+    protected function casts(): array
+    {
+        return [
+            'layout' => 'array',
+            'widget_count' => 'integer',
+            'created_at' => 'datetime',
+        ];
+    }
 
     public function dashboard(): BelongsTo
     {

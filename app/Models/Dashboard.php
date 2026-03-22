@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\DB;
 
 class Dashboard extends Model
 {
@@ -21,10 +22,13 @@ class Dashboard extends Model
         'is_locked',
     ];
 
-    protected $casts = [
-        'is_template' => 'boolean',
-        'is_locked' => 'boolean',
-    ];
+    protected function casts(): array
+    {
+        return [
+            'is_template' => 'boolean',
+            'is_locked' => 'boolean',
+        ];
+    }
 
     public function workspace(): BelongsTo
     {
@@ -68,20 +72,22 @@ class Dashboard extends Model
 
     public function cloneToWorkspace(int $workspaceId, int $userId): self
     {
-        $clone = $this->replicate(['is_template', 'template_slug', 'is_locked']);
-        $clone->workspace_id = $workspaceId;
-        $clone->created_by = $userId;
-        $clone->is_template = false;
-        $clone->template_slug = null;
-        $clone->is_locked = false;
-        $clone->save();
+        return DB::transaction(function () use ($workspaceId, $userId) {
+            $clone = $this->replicate(['is_template', 'template_slug', 'is_locked']);
+            $clone->workspace_id = $workspaceId;
+            $clone->created_by = $userId;
+            $clone->is_template = false;
+            $clone->template_slug = null;
+            $clone->is_locked = false;
+            $clone->save();
 
-        foreach ($this->widgets as $widget) {
-            $widgetClone = $widget->replicate();
-            $widgetClone->dashboard_id = $clone->id;
-            $widgetClone->save();
-        }
+            foreach ($this->widgets as $widget) {
+                $widgetClone = $widget->replicate();
+                $widgetClone->dashboard_id = $clone->id;
+                $widgetClone->save();
+            }
 
-        return $clone;
+            return $clone;
+        });
     }
 }

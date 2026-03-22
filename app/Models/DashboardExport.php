@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
 
 class DashboardExport extends Model
 {
+    use HasFactory;
+
     public $timestamps = false;
 
     protected $fillable = [
@@ -22,12 +25,15 @@ class DashboardExport extends Model
         'created_at',
     ];
 
-    protected $casts = [
-        'layout' => 'array',
-        'widget_count' => 'integer',
-        'expires_at' => 'datetime',
-        'created_at' => 'datetime',
-    ];
+    protected function casts(): array
+    {
+        return [
+            'layout' => 'array',
+            'widget_count' => 'integer',
+            'expires_at' => 'datetime',
+            'created_at' => 'datetime',
+        ];
+    }
 
     public function dashboard(): BelongsTo
     {
