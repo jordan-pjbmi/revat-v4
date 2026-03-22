@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Dashboard;
+use App\Models\DashboardExport;
 use App\Models\DashboardSnapshot;
 use App\Models\UserDashboardPreference;
 use App\Services\WorkspaceContext;
@@ -18,7 +19,17 @@ new class extends Component
 
     public bool $showVersionHistory = false;
 
+    public bool $showNewDashboardModal = false;
+
+    public bool $showRenameDashboardModal = false;
+
     public bool $activeDashboardLocked = false;
+
+    public string $newDashboardName = '';
+
+    public string $renameDashboardName = '';
+
+    public ?string $shareUrl = null;
 
     /** @var array<int, array{id: int, name: string}> */
     public array $dashboards = [];
@@ -30,12 +41,7 @@ new class extends Component
             return;
         }
 
-        $this->dashboards = Dashboard::forWorkspace($workspace->id)
-            ->notTemplates()
-            ->orderBy('name')
-            ->get(['id', 'name'])
-            ->map(fn ($d) => ['id' => $d->id, 'name' => $d->name])
-            ->toArray();
+        $this->loadDashboards($workspace->id);
 
         $preference = UserDashboardPreference::where('user_id', auth()->id())
             ->where('workspace_id', $workspace->id)
@@ -97,6 +103,95 @@ new class extends Component
         $this->showVersionHistory = false;
     }
 
+    public function openNewDashboardModal(): void
+    {
+        $this->newDashboardName = '';
+        $this->showNewDashboardModal = true;
+    }
+
+    public function openRenameDashboardModal(): void
+    {
+        $this->renameDashboardName = $this->activeDashboardName;
+        $this->showRenameDashboardModal = true;
+    }
+
+    public function openAddWidget(): void
+    {
+        $this->dispatch('open-widget-catalog');
+    }
+
+    public function toggleLock(): void
+    {
+        $this->authorize('manage');
+        if (! $this->activeDashboardId) {
+            return;
+        }
+        $dashboard = Dashboard::find($this->activeDashboardId);
+        if ($dashboard) {
+            $dashboard->update(['is_locked' => ! $dashboard->is_locked]);
+            $this->activeDashboardLocked = (bool) $dashboard->fresh()->is_locked;
+        }
+    }
+
+    public function deleteDashboard(): void
+    {
+        $this->authorize('manage');
+        if (! $this->activeDashboardId) {
+            return;
+        }
+        $dashboard = Dashboard::find($this->activeDashboardId);
+        if ($dashboard && ! $dashboard->is_locked) {
+            $dashboard->delete();
+            $workspace = app(WorkspaceContext::class)->getWorkspace();
+            $this->loadDashboards($workspace->id);
+            if (count($this->dashboards) > 0) {
+                $this->switchDashboard($this->dashboards[0]['id']);
+            } else {
+                $this->activeDashboardId = null;
+                $this->activeDashboardName = '';
+                $this->showTemplates = true;
+            }
+        }
+    }
+
+    public function exportDashboard(): void
+    {
+        if (! $this->activeDashboardId) {
+            return;
+        }
+
+        $dashboard = Dashboard::with('widgets')->find($this->activeDashboardId);
+        if (! $dashboard) {
+            return;
+        }
+
+        $export = DashboardExport::create([
+            'dashboard_id' => $dashboard->id,
+            'created_by' => auth()->id(),
+            'token' => DashboardExport::generateToken(),
+            'layout' => $dashboard->widgets->map(fn ($w) => [
+                'widget_type' => $w->widget_type,
+                'grid_x' => $w->grid_x,
+                'grid_y' => $w->grid_y,
+                'grid_w' => $w->grid_w,
+                'grid_h' => $w->grid_h,
+                'config' => $w->config,
+                'sort_order' => $w->sort_order,
+            ])->toArray(),
+            'name' => $dashboard->name,
+            'description' => $dashboard->description,
+            'widget_count' => $dashboard->widgets->count(),
+            'created_at' => now(),
+        ]);
+
+        $this->shareUrl = url('/dashboard/import/' . $export->token);
+    }
+
+    public function clearShareUrl(): void
+    {
+        $this->shareUrl = null;
+    }
+
     /** @return \Illuminate\Database\Eloquent\Collection<int, DashboardSnapshot> */
     public function getSnapshotsProperty(): \Illuminate\Database\Eloquent\Collection
     {
@@ -119,7 +214,18 @@ new class extends Component
             $this->activeDashboardLocked = (bool) $dashboard->is_locked;
             $this->showTemplates = false;
             $this->showVersionHistory = false;
+            $this->shareUrl = null;
         }
+    }
+
+    protected function loadDashboards(int $workspaceId): void
+    {
+        $this->dashboards = Dashboard::forWorkspace($workspaceId)
+            ->notTemplates()
+            ->orderBy('name')
+            ->get(['id', 'name'])
+            ->map(fn ($d) => ['id' => $d->id, 'name' => $d->name])
+            ->toArray();
     }
 }; ?>
 
@@ -208,45 +314,86 @@ new class extends Component
                         @endif
                     </div>
 
-                    @can('integrate')
+                    {{-- Dashboard Switcher (visible to all roles) --}}
+                    <flux:dropdown>
+                        <flux:button variant="ghost" size="sm" icon-trailing="chevron-down">
+                            @if (count($dashboards) > 1) Switch @else Dashboards @endif
+                        </flux:button>
+
+                        <flux:menu>
+                            @foreach ($dashboards as $d)
+                                <flux:menu.item wire:click="switchDashboard({{ $d['id'] }})">
+                                    {{ $d['name'] }}
+                                    @if ($d['id'] === $activeDashboardId)
+                                        <flux:icon.check class="w-4 h-4 ml-auto" />
+                                    @endif
+                                </flux:menu.item>
+                            @endforeach
+
+                            @can('integrate')
+                                <flux:menu.separator />
+
+                                {{-- Create from template --}}
+                                <flux:menu.submenu heading="New from Template">
+                                    <flux:menu.item onclick="event.preventDefault(); document.getElementById('tpl-executive').submit();">
+                                        Executive Overview
+                                    </flux:menu.item>
+                                    <flux:menu.item onclick="event.preventDefault(); document.getElementById('tpl-campaign').submit();">
+                                        Campaign Manager
+                                    </flux:menu.item>
+                                    <flux:menu.item onclick="event.preventDefault(); document.getElementById('tpl-attribution').submit();">
+                                        Attribution Analyst
+                                    </flux:menu.item>
+                                </flux:menu.submenu>
+
+                                <flux:menu.item wire:click="openNewDashboardModal">
+                                    + Blank Dashboard
+                                </flux:menu.item>
+                            @endcan
+                        </flux:menu>
+                    </flux:dropdown>
+
+                    {{-- Dashboard Actions Menu --}}
+                    @if ($activeDashboardId)
                         <flux:dropdown>
-                            <flux:button variant="ghost" size="sm" icon-trailing="chevron-down">
-                                @if (count($dashboards) > 1)
-                                    Switch
-                                @else
-                                    Dashboards
-                                @endif
-                            </flux:button>
+                            <flux:button variant="ghost" size="sm" icon="ellipsis-vertical" />
 
                             <flux:menu>
-                                @foreach ($dashboards as $d)
-                                    <flux:menu.item wire:click="switchDashboard({{ $d['id'] }})">
-                                        {{ $d['name'] }}
-                                        @if ($d['id'] === $activeDashboardId)
-                                            <flux:icon.check class="w-4 h-4 ml-auto" />
-                                        @endif
+                                @can('integrate')
+                                    <flux:menu.item wire:click="openRenameDashboardModal" icon="pencil">
+                                        Rename
                                     </flux:menu.item>
-                                @endforeach
-                                <flux:menu.separator />
-                                <flux:menu.item onclick="event.preventDefault(); document.getElementById('create-dashboard-form').submit();">
-                                    + New Dashboard
+                                    <flux:menu.item wire:click="exportDashboard" icon="share">
+                                        Share Link
+                                    </flux:menu.item>
+                                @endcan
+
+                                <flux:menu.item wire:click="openVersionHistory" icon="clock">
+                                    Version History
                                 </flux:menu.item>
+
+                                @can('manage')
+                                    <flux:menu.separator />
+                                    <flux:menu.item wire:click="toggleLock" icon="{{ $activeDashboardLocked ? 'lock-open' : 'lock-closed' }}">
+                                        {{ $activeDashboardLocked ? 'Unlock' : 'Lock' }} Dashboard
+                                    </flux:menu.item>
+                                    <flux:menu.item variant="danger" wire:click="deleteDashboard" wire:confirm="Delete this dashboard?" icon="trash">
+                                        Delete Dashboard
+                                    </flux:menu.item>
+                                @endcan
                             </flux:menu>
                         </flux:dropdown>
-                    @endcan
+                    @endif
                 </div>
 
                 <div class="flex items-center gap-3">
                     <livewire:dashboard.date-filter />
 
-                    @if ($activeDashboardId)
-                        <flux:button size="sm" variant="ghost" wire:click="openVersionHistory" icon="clock">
-                            History
-                        </flux:button>
-                    @endif
-
                     @can('integrate')
                         @if ($editing)
+                            <flux:button size="sm" variant="primary" wire:click="openAddWidget" icon="plus">
+                                Add Widget
+                            </flux:button>
                             <flux:button size="sm" variant="primary" wire:click="exitEditMode">Done</flux:button>
                             <flux:button size="sm" variant="ghost" wire:click="exitEditMode">Cancel</flux:button>
                         @elseif (! $activeDashboardLocked || auth()->user()->can('manage'))
@@ -258,6 +405,18 @@ new class extends Component
                 </div>
             </div>
 
+            {{-- Share URL notification --}}
+            @if ($shareUrl)
+                <div class="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <flux:icon.link class="w-4 h-4 text-blue-500" />
+                        <span class="text-sm text-blue-700 dark:text-blue-300">Share link created:</span>
+                        <code class="text-xs bg-blue-100 dark:bg-blue-900/40 px-2 py-0.5 rounded text-blue-800 dark:text-blue-200 select-all">{{ $shareUrl }}</code>
+                    </div>
+                    <flux:button size="xs" variant="ghost" wire:click="clearShareUrl">Dismiss</flux:button>
+                </div>
+            @endif
+
             {{-- Dashboard Grid --}}
             @if ($activeDashboardId)
                 <livewire:dashboard.dashboard-grid :dashboard-id="$activeDashboardId" :key="'grid-' . $activeDashboardId" />
@@ -266,46 +425,97 @@ new class extends Component
             {{-- Widget Config Panel (slide-over) --}}
             <livewire:dashboard.widget-config-panel />
 
-            {{-- Hidden form for creating new dashboard from the dropdown --}}
-            <form id="create-dashboard-form" method="POST" action="{{ route('dashboard.store') }}" class="hidden">
-                @csrf
-                <input type="hidden" name="name" value="New Dashboard" />
-            </form>
+            {{-- Hidden template forms --}}
+            @can('integrate')
+                <form id="tpl-executive" method="POST" action="{{ route('dashboard.store') }}" class="hidden">
+                    @csrf
+                    <input type="hidden" name="name" value="Executive Overview" />
+                    <input type="hidden" name="template_slug" value="executive" />
+                </form>
+                <form id="tpl-campaign" method="POST" action="{{ route('dashboard.store') }}" class="hidden">
+                    @csrf
+                    <input type="hidden" name="name" value="Campaign Manager" />
+                    <input type="hidden" name="template_slug" value="campaign-manager" />
+                </form>
+                <form id="tpl-attribution" method="POST" action="{{ route('dashboard.store') }}" class="hidden">
+                    @csrf
+                    <input type="hidden" name="name" value="Attribution Analyst" />
+                    <input type="hidden" name="template_slug" value="attribution-analyst" />
+                </form>
+            @endcan
+
+            {{-- New Dashboard Modal --}}
+            @if ($showNewDashboardModal)
+                <flux:modal name="new-dashboard" :show="true" wire:close="$set('showNewDashboardModal', false)" class="max-w-sm">
+                    <div class="mb-4">
+                        <flux:heading size="lg">New Dashboard</flux:heading>
+                        <flux:subheading>Give your dashboard a name.</flux:subheading>
+                    </div>
+                    <form method="POST" action="{{ route('dashboard.store') }}">
+                        @csrf
+                        <flux:input name="name" label="Name" placeholder="My Dashboard" required class="mb-4" />
+                        <div class="flex gap-2 justify-end">
+                            <flux:button variant="ghost" wire:click="$set('showNewDashboardModal', false)">Cancel</flux:button>
+                            <flux:button type="submit" variant="primary">Create</flux:button>
+                        </div>
+                    </form>
+                </flux:modal>
+            @endif
+
+            {{-- Rename Dashboard Modal --}}
+            @if ($showRenameDashboardModal && $activeDashboardId)
+                <flux:modal name="rename-dashboard" :show="true" wire:close="$set('showRenameDashboardModal', false)" class="max-w-sm">
+                    <div class="mb-4">
+                        <flux:heading size="lg">Rename Dashboard</flux:heading>
+                    </div>
+                    <form method="POST" action="{{ route('dashboard.update', $activeDashboardId) }}">
+                        @csrf
+                        @method('PUT')
+                        <flux:input name="name" label="Name" value="{{ $activeDashboardName }}" required class="mb-4" />
+                        <div class="flex gap-2 justify-end">
+                            <flux:button variant="ghost" wire:click="$set('showRenameDashboardModal', false)">Cancel</flux:button>
+                            <flux:button type="submit" variant="primary">Save</flux:button>
+                        </div>
+                    </form>
+                </flux:modal>
+            @endif
 
             {{-- Version History Modal --}}
-            <flux:modal name="version-history" :show="$showVersionHistory" wire:close="closeVersionHistory" class="max-w-lg">
-                <div class="mb-4">
-                    <flux:heading size="lg">Version History</flux:heading>
-                    <flux:subheading>Restore the dashboard to a previous snapshot.</flux:subheading>
-                </div>
+            @if ($showVersionHistory)
+                <flux:modal name="version-history" :show="true" wire:close="closeVersionHistory" class="max-w-lg">
+                    <div class="mb-4">
+                        <flux:heading size="lg">Version History</flux:heading>
+                        <flux:subheading>Restore the dashboard to a previous snapshot.</flux:subheading>
+                    </div>
 
-                <div class="divide-y divide-slate-100 dark:divide-slate-700">
-                    @forelse ($this->snapshots as $snapshot)
-                        <div class="flex items-center justify-between py-3">
-                            <div>
-                                <p class="text-sm font-medium text-slate-900 dark:text-white">
-                                    {{ $snapshot->created_at->diffForHumans() }}
-                                </p>
-                                <p class="text-xs text-slate-500 dark:text-slate-400">
-                                    {{ $snapshot->widget_count }} {{ Str::plural('widget', $snapshot->widget_count) }}
-                                    &middot; {{ $snapshot->creator?->name ?? 'Unknown' }}
-                                </p>
+                    <div class="divide-y divide-slate-100 dark:divide-slate-700">
+                        @forelse ($this->snapshots as $snapshot)
+                            <div class="flex items-center justify-between py-3">
+                                <div>
+                                    <p class="text-sm font-medium text-slate-900 dark:text-white">
+                                        {{ $snapshot->created_at->diffForHumans() }}
+                                    </p>
+                                    <p class="text-xs text-slate-500 dark:text-slate-400">
+                                        {{ $snapshot->widget_count }} {{ Str::plural('widget', $snapshot->widget_count) }}
+                                        &middot; {{ $snapshot->creator?->name ?? 'Unknown' }}
+                                    </p>
+                                </div>
+
+                                @can('integrate')
+                                    <form method="POST" action="{{ route('dashboard.restore', [$activeDashboardId, $snapshot->id]) }}">
+                                        @csrf
+                                        <flux:button type="submit" size="xs" variant="ghost">
+                                            Restore
+                                        </flux:button>
+                                    </form>
+                                @endcan
                             </div>
-
-                            @can('integrate')
-                                <form method="POST" action="{{ route('dashboard.restore', [$activeDashboardId, $snapshot->id]) }}">
-                                    @csrf
-                                    <flux:button type="submit" size="xs" variant="ghost">
-                                        Restore
-                                    </flux:button>
-                                </form>
-                            @endcan
-                        </div>
-                    @empty
-                        <p class="py-6 text-center text-sm text-slate-500 dark:text-slate-400">No snapshots yet.</p>
-                    @endforelse
-                </div>
-            </flux:modal>
+                        @empty
+                            <p class="py-6 text-center text-sm text-slate-500 dark:text-slate-400">No snapshots yet.</p>
+                        @endforelse
+                    </div>
+                </flux:modal>
+            @endif
         @endif
     </div>
     @endvolt
