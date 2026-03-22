@@ -86,11 +86,19 @@ new class extends Component
     {
         $this->authorize('integrate');
         $this->editing = true;
+        $this->dispatch('dashboard-enter-edit-mode');
     }
 
     public function exitEditMode(): void
     {
         $this->editing = false;
+        $this->dispatch('dashboard-exit-edit-mode');
+    }
+
+    public function cancelEditMode(): void
+    {
+        $this->editing = false;
+        $this->dispatch('dashboard-cancel-edit-mode');
     }
 
     public function openVersionHistory(): void
@@ -395,7 +403,7 @@ new class extends Component
                                 Add Widget
                             </flux:button>
                             <flux:button size="sm" variant="primary" wire:click="exitEditMode">Done</flux:button>
-                            <flux:button size="sm" variant="ghost" wire:click="exitEditMode">Cancel</flux:button>
+                            <flux:button size="sm" variant="ghost" wire:click="cancelEditMode">Cancel</flux:button>
                         @elseif (! $activeDashboardLocked || auth()->user()->can('manage'))
                             <flux:button size="sm" variant="ghost" wire:click="enterEditMode" icon="pencil-square">
                                 Customize

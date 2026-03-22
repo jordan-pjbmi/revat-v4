@@ -9,7 +9,11 @@
         'minH' => ($widgetRegistry[$w->widget_type]['min_h'] ?? 2),
         'maxW' => ($widgetRegistry[$w->widget_type]['max_w'] ?? 12),
         'maxH' => ($widgetRegistry[$w->widget_type]['max_h'] ?? 10),
-    ])->toArray()), @js($editing))" class="grid-stack">
+    ])->toArray()), @js($editing))"
+    @dashboard-enter-edit-mode.window="enterEditMode()"
+    @dashboard-exit-edit-mode.window="exitEditMode()"
+    @dashboard-cancel-edit-mode.window="cancelEdit()"
+    class="grid-stack">
         @foreach($widgets as $widget)
             @php
                 $reg = $widgetRegistry[$widget->widget_type] ?? null;
