@@ -79,6 +79,7 @@ document.addEventListener('alpine:init', () => {
         snapshotLayout: null,
 
         init() {
+            const gridEl = this.$el;
             this.grid = GridStack.init({
                 column: 12,
                 cellHeight: 80,
@@ -93,10 +94,16 @@ document.addEventListener('alpine:init', () => {
                         { w: 1200, c: 6 },
                     ],
                 },
-            }, this.$el);
+            }, gridEl);
 
             this.grid.on('change', (event, items) => {
                 this.debouncedSave(items);
+            });
+
+            // After drag/resize completes, reload to restore Livewire components
+            // that break when GridStack moves DOM nodes.
+            this.grid.on('dragstop', () => {
+                this.needsReload = true;
             });
 
             this.grid.on('resizestop', (event, el) => {
@@ -106,8 +113,11 @@ document.addEventListener('alpine:init', () => {
                         detail: { widgetId: parseInt(widgetId) },
                     }));
                 }
+                this.needsReload = true;
             });
         },
+
+        needsReload: false,
 
         debouncedSave: Alpine.debounce(function (items) {
             if (!this.editing) return;
@@ -134,6 +144,11 @@ document.addEventListener('alpine:init', () => {
             this.grid.enableMove(false);
             this.grid.enableResize(false);
             this.snapshotLayout = null;
+            // Reload page to restore Livewire components after drag/resize
+            if (this.needsReload) {
+                this.needsReload = false;
+                window.location.reload();
+            }
         },
 
         cancelEdit() {
