@@ -1,6 +1,5 @@
 import Chart from 'chart.js/auto';
 import { GridStack } from 'gridstack';
-import 'gridstack/dist/gridstack.min.css';
 
 document.addEventListener('alpine:init', () => {
     Alpine.data('chartWidget', () => ({
