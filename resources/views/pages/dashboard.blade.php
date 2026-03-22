@@ -208,10 +208,14 @@ new class extends Component
                         @endif
                     </div>
 
-                    @if (count($dashboards) > 1)
+                    @can('integrate')
                         <flux:dropdown>
                             <flux:button variant="ghost" size="sm" icon-trailing="chevron-down">
-                                Switch
+                                @if (count($dashboards) > 1)
+                                    Switch
+                                @else
+                                    Dashboards
+                                @endif
                             </flux:button>
 
                             <flux:menu>
@@ -224,12 +228,12 @@ new class extends Component
                                     </flux:menu.item>
                                 @endforeach
                                 <flux:menu.separator />
-                                <flux:menu.item :href="route('dashboard.store')" onclick="event.preventDefault(); document.getElementById('create-dashboard-form').submit();">
+                                <flux:menu.item onclick="event.preventDefault(); document.getElementById('create-dashboard-form').submit();">
                                     + New Dashboard
                                 </flux:menu.item>
                             </flux:menu>
                         </flux:dropdown>
-                    @endif
+                    @endcan
                 </div>
 
                 <div class="flex items-center gap-3">
