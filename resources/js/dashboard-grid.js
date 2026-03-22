@@ -99,10 +99,13 @@ document.addEventListener('alpine:init', () => {
                 this.debouncedSave(items);
             });
 
-            // After drag/resize completes, reload to restore Livewire components
-            // that break when GridStack moves DOM nodes.
-            this.grid.on('dragstop', () => {
-                this.needsReload = true;
+            // GridStack v12 bug: after drag/resize, _removeHelperStyle clears
+            // CSS variable positioning but onEndMoving fails to restore it.
+            // Listen on document mouseup to restore styles after any drag ends.
+            document.addEventListener('mouseup', () => {
+                if (this.editing && this.grid) {
+                    requestAnimationFrame(() => this._restoreGridStyles());
+                }
             });
 
             this.grid.on('resizestop', (event, el) => {
@@ -152,10 +155,35 @@ document.addEventListener('alpine:init', () => {
 
         cancelEdit() {
             if (this.snapshotLayout) {
-                this.grid.load(this.snapshotLayout);
                 this.$wire.cancelEdit();
+                // Skip grid.load() when a reload is pending — loading the snapshot
+                // replaces Livewire component DOM with raw HTML causing a flash.
+                if (!this.needsReload) {
+                    this.grid.load(this.snapshotLayout);
+                }
             }
             this.exitEditMode();
+        },
+
+        /** @internal GridStack v12 fails to restore CSS variable positioning after drag/resize.
+         *  This re-applies position styles for all grid items from their engine nodes. */
+        _restoreGridStyles() {
+            this.$el.querySelectorAll('.grid-stack-item').forEach(el => {
+                const n = el.gridstackNode;
+                if (!n) return;
+                const inEngine = this.grid.engine.nodes.includes(n);
+                // Re-add nodes removed from engine during drag
+                if (!inEngine) {
+                    delete n._temporaryRemoved;
+                    this.grid.engine.addNode(n);
+                }
+                // Detect if CSS variable styles were cleared (drag/resize happened)
+                const needsRestore = (n.w > 1 && !el.style.width) || (n.h > 1 && !el.style.height);
+                if (needsRestore) {
+                    this.grid._writePosAttr(el, n);
+                    this.needsReload = true;
+                }
+            });
         },
 
         removeWidget(el) {
