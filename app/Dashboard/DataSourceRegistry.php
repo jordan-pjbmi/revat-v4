@@ -29,7 +29,7 @@ class DataSourceRegistry
             'description' => 'Conversions, revenue, and cost',
             'summary_model' => SummaryConversionDaily::class,
             'measures' => [
-                'conversions' => ['label' => 'Conversions', 'format' => 'number'],
+                'conversions' => ['label' => 'Conversions', 'format' => 'number', 'column' => 'conversions_count'],
                 'revenue' => ['label' => 'Revenue', 'format' => 'currency'],
                 'cost' => ['label' => 'Cost', 'format' => 'currency'],
                 'roas' => ['label' => 'ROAS', 'format' => 'decimal', 'computed' => true],
@@ -44,7 +44,7 @@ class DataSourceRegistry
             'measures' => [
                 'attributed_conversions' => ['label' => 'Attributed Conversions', 'format' => 'number'],
                 'attributed_revenue' => ['label' => 'Attributed Revenue', 'format' => 'currency'],
-                'weight' => ['label' => 'Weight', 'format' => 'decimal'],
+                'weight' => ['label' => 'Weight', 'format' => 'decimal', 'column' => 'total_weight'],
             ],
             'dimensions' => ['effort', 'model'],
             'supports_trend' => true,
@@ -64,7 +64,7 @@ class DataSourceRegistry
                 'sent' => ['label' => 'Total Sent', 'format' => 'number'],
                 'opens' => ['label' => 'Opens', 'format' => 'number'],
                 'clicks' => ['label' => 'Clicks', 'format' => 'number'],
-                'revenue' => ['label' => 'Revenue', 'format' => 'currency'],
+                'revenue' => ['label' => 'Revenue', 'format' => 'currency', 'column' => 'platform_revenue'],
             ],
             'dimensions' => ['platform'],
             'supports_trend' => true,
