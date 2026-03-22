@@ -75,7 +75,7 @@ document.addEventListener('alpine:init', () => {
     Alpine.data('dashboardGrid', (initialWidgets = [], editMode = false) => ({
         grid: null,
         editing: editMode,
-        snapshotLayout: null,
+        _styleCheckFrame: null,
 
         init() {
             const gridEl = this.$el;
@@ -85,6 +85,7 @@ document.addEventListener('alpine:init', () => {
                 margin: 12,
                 animate: true,
                 float: false,
+                alwaysShowResizeHandle: true,
                 disableResize: !this.editing,
                 disableDrag: !this.editing,
                 columnOpts: {
@@ -97,24 +98,6 @@ document.addEventListener('alpine:init', () => {
 
             this.grid.on('change', (event, items) => {
                 this.debouncedSave(items);
-            });
-
-            // GridStack v12 bug: after drag/resize, _removeHelperStyle clears
-            // CSS variable positioning but onEndMoving fails to restore it.
-            // Listen on document mouseup to restore styles after any drag ends.
-            document.addEventListener('mouseup', () => {
-                if (this.editing && this.grid) {
-                    requestAnimationFrame(() => this._restoreGridStyles());
-                }
-            });
-
-            this.grid.on('resizestop', (event, el) => {
-                const widgetId = el.getAttribute('gs-id');
-                if (widgetId) {
-                    window.dispatchEvent(new CustomEvent('widget-resized', {
-                        detail: { widgetId: parseInt(widgetId) },
-                    }));
-                }
                 this.needsReload = true;
             });
         },
@@ -134,18 +117,43 @@ document.addEventListener('alpine:init', () => {
         }, 500),
 
         enterEditMode() {
-            this.snapshotLayout = this.grid.save(true);
             this.$wire.createSnapshot();
             this.editing = true;
             this.grid.enableMove(true);
             this.grid.enableResize(true);
+            // GridStack v12 + Livewire workaround: resizestop/dragstop events
+            // don't fire (onEndMoving early-returns when gridstackNode is broken
+            // by wire:ignore), _cleanHelper restores original inline styles, and
+            // _writePosAttr skips setting new ones (_resizing flag). Poll via rAF
+            // during edit mode to reconcile inline styles with gs-* attributes.
+            // The check is cheap — it skips elements that already have correct
+            // styles and elements currently being dragged/resized.
+            this._startStyleCheck();
+        },
+
+        _startStyleCheck() {
+            const self = this;
+            const check = () => {
+                if (!self.editing) return;
+                self._reconcileStyles();
+                self._styleCheckFrame = requestAnimationFrame(check);
+            };
+            self._styleCheckFrame = requestAnimationFrame(check);
+        },
+
+        _stopStyleCheck() {
+            if (this._styleCheckFrame) {
+                cancelAnimationFrame(this._styleCheckFrame);
+                this._styleCheckFrame = null;
+            }
         },
 
         exitEditMode() {
             this.editing = false;
+            this._stopStyleCheck();
             this.grid.enableMove(false);
             this.grid.enableResize(false);
-            this.snapshotLayout = null;
+            this._reconcileStyles();
             // Reload page to restore Livewire components after drag/resize
             if (this.needsReload) {
                 this.needsReload = false;
@@ -154,35 +162,33 @@ document.addEventListener('alpine:init', () => {
         },
 
         cancelEdit() {
-            if (this.snapshotLayout) {
-                this.$wire.cancelEdit();
-                // Skip grid.load() when a reload is pending — loading the snapshot
-                // replaces Livewire component DOM with raw HTML causing a flash.
-                if (!this.needsReload) {
-                    this.grid.load(this.snapshotLayout);
-                }
-            }
-            this.exitEditMode();
+            // Server-side cancelEdit restores the pre-edit snapshot and redirects.
+            this.editing = false;
+            this._stopStyleCheck();
+            this.grid.enableMove(false);
+            this.grid.enableResize(false);
+            this.$wire.cancelEdit();
         },
 
-        /** @internal GridStack v12 fails to restore CSS variable positioning after drag/resize.
-         *  This re-applies position styles for all grid items from their engine nodes. */
-        _restoreGridStyles() {
+        /** @internal Reconciles inline CSS variable styles with gs-* attributes.
+         *  GridStack v12 updates gs-* attributes correctly but sometimes fails to
+         *  set the corresponding inline styles. This is a no-op when styles match. */
+        _reconcileStyles() {
             this.$el.querySelectorAll('.grid-stack-item').forEach(el => {
-                const n = el.gridstackNode;
-                if (!n) return;
-                const inEngine = this.grid.engine.nodes.includes(n);
-                // Re-add nodes removed from engine during drag
-                if (!inEngine) {
-                    delete n._temporaryRemoved;
-                    this.grid.engine.addNode(n);
-                }
-                // Detect if CSS variable styles were cleared (drag/resize happened)
-                const needsRestore = (n.w > 1 && !el.style.width) || (n.h > 1 && !el.style.height);
-                if (needsRestore) {
-                    this.grid._writePosAttr(el, n);
-                    this.needsReload = true;
-                }
+                if (el.classList.contains('ui-draggable-dragging') || el.classList.contains('ui-resizable-resizing')) return;
+
+                const w = parseInt(el.getAttribute('gs-w') || '1');
+                const h = parseInt(el.getAttribute('gs-h') || '1');
+                const x = parseInt(el.getAttribute('gs-x') || '0');
+                const y = parseInt(el.getAttribute('gs-y') || '0');
+                const wantW = w > 1 ? `calc(${w} * var(--gs-column-width))` : '';
+                const wantH = h > 1 ? `calc(${h} * var(--gs-cell-height))` : '';
+                if (el.style.width !== wantW) el.style.width = wantW || null;
+                if (el.style.height !== wantH) el.style.height = wantH || null;
+                const wantL = x ? `calc(${x} * var(--gs-column-width))` : '';
+                const wantT = y ? `calc(${y} * var(--gs-cell-height))` : '';
+                if (el.style.left !== wantL) el.style.left = wantL || null;
+                if (el.style.top !== wantT) el.style.top = wantT || null;
             });
         },
 

@@ -106,10 +106,6 @@ new class extends Component
         $this->showVersionHistory = true;
     }
 
-    public function closeVersionHistory(): void
-    {
-        $this->showVersionHistory = false;
-    }
 
     public function openNewDashboardModal(): void
     {
@@ -263,7 +259,7 @@ new class extends Component
                         <form method="POST" action="{{ route('dashboard.store') }}">
                             @csrf
                             <input type="hidden" name="name" value="Executive Overview" />
-                            <input type="hidden" name="template_slug" value="executive" />
+                            <input type="hidden" name="template_slug" value="executive-overview" />
                             <flux:button type="submit" variant="primary" size="sm" class="w-full">Start with this</flux:button>
                         </form>
                     </div>
@@ -438,7 +434,7 @@ new class extends Component
                 <form id="tpl-executive" method="POST" action="{{ route('dashboard.store') }}" class="hidden">
                     @csrf
                     <input type="hidden" name="name" value="Executive Overview" />
-                    <input type="hidden" name="template_slug" value="executive" />
+                    <input type="hidden" name="template_slug" value="executive-overview" />
                 </form>
                 <form id="tpl-campaign" method="POST" action="{{ route('dashboard.store') }}" class="hidden">
                     @csrf
@@ -453,26 +449,24 @@ new class extends Component
             @endcan
 
             {{-- New Dashboard Modal --}}
-            @if ($showNewDashboardModal)
-                <flux:modal name="new-dashboard" :show="true" wire:close="$set('showNewDashboardModal', false)" class="max-w-sm">
-                    <div class="mb-4">
-                        <flux:heading size="lg">New Dashboard</flux:heading>
-                        <flux:subheading>Give your dashboard a name.</flux:subheading>
+            <flux:modal wire:model.self="showNewDashboardModal" class="max-w-sm">
+                <div class="mb-4">
+                    <flux:heading size="lg">New Dashboard</flux:heading>
+                    <flux:subheading>Give your dashboard a name.</flux:subheading>
+                </div>
+                <form method="POST" action="{{ route('dashboard.store') }}">
+                    @csrf
+                    <flux:input name="name" label="Name" placeholder="My Dashboard" required class="mb-4" />
+                    <div class="flex gap-2 justify-end">
+                        <flux:button variant="ghost" wire:click="$set('showNewDashboardModal', false)">Cancel</flux:button>
+                        <flux:button type="submit" variant="primary">Create</flux:button>
                     </div>
-                    <form method="POST" action="{{ route('dashboard.store') }}">
-                        @csrf
-                        <flux:input name="name" label="Name" placeholder="My Dashboard" required class="mb-4" />
-                        <div class="flex gap-2 justify-end">
-                            <flux:button variant="ghost" wire:click="$set('showNewDashboardModal', false)">Cancel</flux:button>
-                            <flux:button type="submit" variant="primary">Create</flux:button>
-                        </div>
-                    </form>
-                </flux:modal>
-            @endif
+                </form>
+            </flux:modal>
 
             {{-- Rename Dashboard Modal --}}
-            @if ($showRenameDashboardModal && $activeDashboardId)
-                <flux:modal name="rename-dashboard" :show="true" wire:close="$set('showRenameDashboardModal', false)" class="max-w-sm">
+            @if ($activeDashboardId)
+                <flux:modal wire:model.self="showRenameDashboardModal" class="max-w-sm">
                     <div class="mb-4">
                         <flux:heading size="lg">Rename Dashboard</flux:heading>
                     </div>
@@ -489,41 +483,39 @@ new class extends Component
             @endif
 
             {{-- Version History Modal --}}
-            @if ($showVersionHistory)
-                <flux:modal name="version-history" :show="true" wire:close="closeVersionHistory" class="max-w-lg">
-                    <div class="mb-4">
-                        <flux:heading size="lg">Version History</flux:heading>
-                        <flux:subheading>Restore the dashboard to a previous snapshot.</flux:subheading>
-                    </div>
+            <flux:modal wire:model.self="showVersionHistory" class="max-w-lg">
+                <div class="mb-4">
+                    <flux:heading size="lg">Version History</flux:heading>
+                    <flux:subheading>Restore the dashboard to a previous snapshot.</flux:subheading>
+                </div>
 
-                    <div class="divide-y divide-slate-100 dark:divide-slate-700">
-                        @forelse ($this->snapshots as $snapshot)
-                            <div class="flex items-center justify-between py-3">
-                                <div>
-                                    <p class="text-sm font-medium text-slate-900 dark:text-white">
-                                        {{ $snapshot->created_at->diffForHumans() }}
-                                    </p>
-                                    <p class="text-xs text-slate-500 dark:text-slate-400">
-                                        {{ $snapshot->widget_count }} {{ Str::plural('widget', $snapshot->widget_count) }}
-                                        &middot; {{ $snapshot->creator?->name ?? 'Unknown' }}
-                                    </p>
-                                </div>
-
-                                @can('integrate')
-                                    <form method="POST" action="{{ route('dashboard.restore', [$activeDashboardId, $snapshot->id]) }}">
-                                        @csrf
-                                        <flux:button type="submit" size="xs" variant="ghost">
-                                            Restore
-                                        </flux:button>
-                                    </form>
-                                @endcan
+                <div class="divide-y divide-slate-100 dark:divide-slate-700">
+                    @forelse ($this->snapshots as $snapshot)
+                        <div class="flex items-center justify-between py-3">
+                            <div>
+                                <p class="text-sm font-medium text-slate-900 dark:text-white">
+                                    {{ $snapshot->created_at->diffForHumans() }}
+                                </p>
+                                <p class="text-xs text-slate-500 dark:text-slate-400">
+                                    {{ $snapshot->widget_count }} {{ Str::plural('widget', $snapshot->widget_count) }}
+                                    &middot; {{ $snapshot->creator?->name ?? 'Unknown' }}
+                                </p>
                             </div>
-                        @empty
-                            <p class="py-6 text-center text-sm text-slate-500 dark:text-slate-400">No snapshots yet.</p>
-                        @endforelse
-                    </div>
-                </flux:modal>
-            @endif
+
+                            @can('integrate')
+                                <form method="POST" action="{{ route('dashboard.restore', [$activeDashboardId, $snapshot->id]) }}">
+                                    @csrf
+                                    <flux:button type="submit" size="xs" variant="ghost">
+                                        Restore
+                                    </flux:button>
+                                </form>
+                            @endcan
+                        </div>
+                    @empty
+                        <p class="py-6 text-center text-sm text-slate-500 dark:text-slate-400">No snapshots yet. Snapshots are created each time you customize the dashboard.</p>
+                    @endforelse
+                </div>
+            </flux:modal>
         @endif
     </div>
     @endvolt

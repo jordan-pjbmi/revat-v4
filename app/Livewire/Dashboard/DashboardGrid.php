@@ -66,6 +66,34 @@ class DashboardGrid extends Component
     public function cancelEdit(): void
     {
         $this->editing = false;
+
+        // Restore the most recent snapshot to undo any changes made during editing
+        // (widget removals, additions, position changes).
+        $snapshot = DashboardSnapshot::where('dashboard_id', $this->dashboardId)
+            ->orderByDesc('created_at')
+            ->first();
+
+        if ($snapshot) {
+            DB::transaction(function () use ($snapshot) {
+                $dashboard = Dashboard::find($this->dashboardId);
+                $dashboard->widgets()->delete();
+
+                foreach ($snapshot->layout as $widgetData) {
+                    DashboardWidget::create([
+                        'dashboard_id' => $this->dashboardId,
+                        'widget_type' => $widgetData['widget_type'],
+                        'grid_x' => $widgetData['grid_x'],
+                        'grid_y' => $widgetData['grid_y'],
+                        'grid_w' => $widgetData['grid_w'],
+                        'grid_h' => $widgetData['grid_h'],
+                        'config' => $widgetData['config'] ?? [],
+                        'sort_order' => $widgetData['sort_order'] ?? 0,
+                    ]);
+                }
+            });
+        }
+
+        $this->redirect(route('dashboard'), navigate: true);
     }
 
     public function removeWidget(int $widgetId): void
