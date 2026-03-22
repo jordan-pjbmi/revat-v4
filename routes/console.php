@@ -40,3 +40,8 @@ Schedule::command('extraction:prune')
     ->hourly()
     ->withoutOverlapping()
     ->name('prune-extraction-records');
+
+Schedule::command('dashboard:prune-snapshots')
+    ->daily()
+    ->withoutOverlapping()
+    ->name('prune-dashboard-snapshots');

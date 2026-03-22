@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Dashboard;
+use App\Models\DashboardSnapshot;
 use App\Models\UserDashboardPreference;
 use App\Services\WorkspaceContext;
 use Livewire\Volt\Component;
@@ -14,6 +15,8 @@ new class extends Component
     public bool $editing = false;
 
     public bool $showTemplates = false;
+
+    public bool $showVersionHistory = false;
 
     /** @var array<int, array{id: int, name: string}> */
     public array $dashboards = [];
@@ -82,6 +85,29 @@ new class extends Component
         $this->editing = false;
     }
 
+    public function openVersionHistory(): void
+    {
+        $this->showVersionHistory = true;
+    }
+
+    public function closeVersionHistory(): void
+    {
+        $this->showVersionHistory = false;
+    }
+
+    /** @return \Illuminate\Database\Eloquent\Collection<int, DashboardSnapshot> */
+    public function getSnapshotsProperty(): \Illuminate\Database\Eloquent\Collection
+    {
+        if (! $this->activeDashboardId) {
+            return collect();
+        }
+
+        return DashboardSnapshot::where('dashboard_id', $this->activeDashboardId)
+            ->with('creator')
+            ->orderByDesc('created_at')
+            ->get();
+    }
+
     protected function setActiveDashboard(int $id): void
     {
         $dashboard = Dashboard::find($id);
@@ -89,6 +115,7 @@ new class extends Component
             $this->activeDashboardId = $dashboard->id;
             $this->activeDashboardName = $dashboard->name;
             $this->showTemplates = false;
+            $this->showVersionHistory = false;
         }
     }
 }; ?>
@@ -202,6 +229,12 @@ new class extends Component
                 <div class="flex items-center gap-3">
                     <livewire:dashboard.date-filter />
 
+                    @if ($activeDashboardId)
+                        <flux:button size="sm" variant="ghost" wire:click="openVersionHistory" icon="clock">
+                            History
+                        </flux:button>
+                    @endif
+
                     @can('integrate')
                         @if ($editing)
                             <flux:button size="sm" variant="primary" wire:click="exitEditMode">Done</flux:button>
@@ -228,6 +261,41 @@ new class extends Component
                 @csrf
                 <input type="hidden" name="name" value="New Dashboard" />
             </form>
+
+            {{-- Version History Modal --}}
+            <flux:modal name="version-history" :show="$showVersionHistory" wire:close="closeVersionHistory" class="max-w-lg">
+                <flux:modal.header>
+                    <flux:heading size="lg">Version History</flux:heading>
+                    <flux:subheading>Restore the dashboard to a previous snapshot.</flux:subheading>
+                </flux:modal.header>
+
+                <div class="divide-y divide-slate-100 dark:divide-slate-700">
+                    @forelse ($this->snapshots as $snapshot)
+                        <div class="flex items-center justify-between py-3">
+                            <div>
+                                <p class="text-sm font-medium text-slate-900 dark:text-white">
+                                    {{ $snapshot->created_at->diffForHumans() }}
+                                </p>
+                                <p class="text-xs text-slate-500 dark:text-slate-400">
+                                    {{ $snapshot->widget_count }} {{ Str::plural('widget', $snapshot->widget_count) }}
+                                    &middot; {{ $snapshot->creator?->name ?? 'Unknown' }}
+                                </p>
+                            </div>
+
+                            @can('integrate')
+                                <form method="POST" action="{{ route('dashboard.restore', [$activeDashboardId, $snapshot->id]) }}">
+                                    @csrf
+                                    <flux:button type="submit" size="xs" variant="ghost">
+                                        Restore
+                                    </flux:button>
+                                </form>
+                            @endcan
+                        </div>
+                    @empty
+                        <p class="py-6 text-center text-sm text-slate-500 dark:text-slate-400">No snapshots yet.</p>
+                    @endforelse
+                </div>
+            </flux:modal>
         @endif
     </div>
     @endvolt
